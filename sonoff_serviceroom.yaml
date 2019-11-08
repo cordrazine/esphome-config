@@ -1,0 +1,92 @@
+esphome:
+  name: serviceroom
+  platform: ESP8266
+  board: esp01_1m
+  board_flash_mode: dout
+    
+wifi:
+  ssid: !secret wifi_NoT
+  password: !secret wifi_NoT_psw
+  manual_ip:
+    static_ip: 192.168.20.100
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+  ap:
+    ssid: "Serviceroom Hotspot"
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+api:
+
+logger:
+
+ota:
+
+sensor:
+  - platform: wifi_signal
+    name: "Serviceroom WiFi Signal"
+  - platform: dht
+    model: AM2302
+    pin: GPIO14
+    temperature:
+      name: "Serviceroom Temperature"
+    humidity:
+      name: "Serviceroom Humidity"
+    update_interval: 1min
+    
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO3
+    device_class: motion
+    id: pir_sensor
+    name: "Serviceroom PIR Sensor"
+    on_press:
+      # Turn off light
+      then:
+        - light.turn_on: basic_led
+        - switch.turn_on: basic_relay
+  - platform: template
+    id: pir_sensor_off
+    lambda: 'return id(pir_sensor).state;'
+    filters:
+    - delayed_off: 5min
+    on_release:
+    # Turn off light
+      - light.turn_off: basic_led
+      - switch.turn_off: basic_relay
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: True
+    name: "Serviceroom Button"
+    on_press:
+      then:
+        - light.turn_on: basic_led
+        - switch.turn_on: basic_relay
+  - platform: status
+    name: "Serviceroom Status"
+
+switch:
+  - platform: gpio
+    name: "Serviceroom Relay"
+    id: basic_relay
+    pin: GPIO12
+  - platform: restart
+    name: "Serviceroom Restart"
+
+output:
+  - platform: esp8266_pwm
+    id: basic_green_led
+    pin:
+      number: GPIO13
+      inverted: True
+
+light:
+  - platform: monochromatic
+    name: "Serviceroom Green LED"
+    output: basic_green_led
+    id: basic_led
+
