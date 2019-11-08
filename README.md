@@ -8,5 +8,6 @@ This esphome configuration is an sonoff basic which is installed in one of the c
 
 When the PIR sensor detects movement, the Green LED (Sonoff standard) + the relay (Sonoff standard) will be activated.
 After 5 minutes of no movement detected, the relay will be switched off
+
 Further esphome features installed: captive portal, restart switch, sensor for WiFi strength
 
