@@ -1,0 +1,162 @@
+# Garage A Wemos D1 controller
+# filename: garage_A.yaml
+
+esphome:
+  name: garage_a
+  platform: ESP8266
+  board: d1_mini
+  board_flash_mode: dout
+
+wifi:
+  ssid: !secret wifi_not_ssid
+  password: !secret wifi_not_psw
+  fast_connect: on
+  manual_ip:
+    static_ip: 192.168.20.102
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+
+captive_portal:
+
+api:
+
+logger:
+
+ota:
+
+status_led:
+  pin:
+    number: D4
+    inverted: true
+
+cover:
+  - platform: endstop
+    name: "Garage A Cover"
+    id: garage_door_cover
+    device_class: garage
+
+    open_action:
+      - lambda: ESP_LOGD("DEBUG", "open_action open_endstop ON");
+      - switch.turn_on: garage_relay
+      - delay: 500ms
+      - switch.turn_off: garage_relay
+      
+
+    open_duration: 5s
+    open_endstop: open_endstop_binary_sensor
+    
+    close_action:
+      - switch.turn_on: garage_relay
+      - delay: 500ms
+      - switch.turn_off: garage_relay
+
+    close_duration: 10s
+    close_endstop: close_endstop_binary_sensor
+
+    stop_action:
+      - if:
+          condition:
+            lambda: ' return (id(open_endstop_binary_sensor).state) = "ON";'
+          then:
+            lambda: ESP_LOGD("DEBUG", "stop_action open_endstop ON");
+          else:
+            - lambda: ESP_LOGD("DEBUG", "open_action open_endstop OFF");
+            - switch.turn_on: garage_relay
+            - delay: 500ms
+            - switch.turn_off: garage_relay
+    
+    # has_built_in_endstop: true
+
+text_sensor:
+  - platform: template
+    name: "Garage Door Status"
+    id: garage_door_status
+    #lambda: !lambda |-
+    #  if (id(garage_door_cover).current_operation =  esphome::cover::COVER_OPERATION_IDLE) {
+    #    return "operation idle";
+    #  }   
+    update_interval: 1s
+
+sensor:
+  - platform: wifi_signal
+    name: "Garage A WiFi Signal Sensor"
+    update_interval: 30min
+  - platform: dht
+    pin: D2
+    model: DHT22
+    temperature:
+      name: "Garage A Temperature"
+    humidity:
+      name: "Garage A Humidity"
+    update_interval: 30min
+  - platform: ultrasonic
+    trigger_pin: D0
+    echo_pin: D8
+    name: "Garage A Distance"
+    id: distance_sensor
+    update_interval: 30min
+  - platform: uptime
+    name: "Garage A Uptime"
+
+binary_sensor:
+  # Availability status
+  - platform: status
+    name: "Garage A Status"
+  - platform: gpio
+    name: "Garage A Trigger Button"
+    filters:
+      - delayed_on: 100ms
+    pin:
+      number: D3
+      inverted: true
+      mode: INPUT_PULLUP
+    
+  - platform: gpio
+    name: "Garage A Open Endstop"
+    id: open_endstop_binary_sensor
+    filters:
+      - delayed_on: 100ms
+    pin:
+      number: D6
+      inverted: true
+      mode: INPUT_PULLUP
+  - platform: gpio
+    name: "Garage A Close Endstop"
+    id: close_endstop_binary_sensor
+    filters:
+      - delayed_on: 100ms
+    pin:
+      number: D7
+      inverted: true
+      mode: INPUT_PULLUP
+  - platform: gpio  
+    pin: D5
+    name: "Garage A Motion"
+    device_class: motion
+  - platform: template
+    name: "Garage A Car Present"
+    id: car_present
+    device_class: occupancy
+    lambda: |-
+      if (isnan(id(distance_sensor).state)) {
+        // isnan checks if the distance_sensor echo
+        // has timed out, resulting in a NaN (not a number) state
+        // in that case, return {} to indicate that we don't know.
+        return {};
+      } else if (id(distance_sensor).state < 1) {
+        // Car Present
+        return true;
+      } else {
+        // No Car Present
+        return false;
+      }
+
+switch:
+  - platform: restart
+    name: "Garage A Restart"
+
+## Relay opener
+  - platform: gpio
+    pin: D1
+    name: "Garage A Relay"
+    id: garage_relay

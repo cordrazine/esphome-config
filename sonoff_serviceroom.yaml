@@ -5,8 +5,8 @@ esphome:
   board_flash_mode: dout
     
 wifi:
-  ssid: !secret wifi_NoT
-  password: !secret wifi_NoT_psw
+  ssid: !secret wifi_not_ssid
+  password: !secret wifi_not_psw
   manual_ip:
     static_ip: 192.168.20.100
     gateway: 192.168.20.1

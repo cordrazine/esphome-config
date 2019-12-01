@@ -1,0 +1,66 @@
+esphome:
+  name: sonoff_xmas_side
+  platform: ESP8266
+  board: esp01_1m
+  board_flash_mode: dout
+    
+wifi:
+  ssid: !secret wifi_not_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: 192.168.20.105
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+  ap:
+    ssid: "Xmas Side Hotspot"
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+api:
+
+logger:
+
+ota:
+
+sensor:
+  - platform: wifi_signal
+    name: "Xmas Side WiFi Signal"
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: True
+    name: "Xmas Side Button"
+    on_press:
+      then:
+        - switch.toggle:
+            id: basic_relay
+        - light.toggle:
+            id: basic_led
+            
+  - platform: status
+    name: "Xmas Side Status"
+
+switch:
+  - platform: gpio
+    name: "Xmas Side Relay"
+    id: basic_relay
+    pin: GPIO12
+  - platform: restart
+    name: "Xmas Side Restart"
+
+output:
+  - platform: esp8266_pwm
+    id: basic_green_led
+    pin:
+      number: GPIO13
+      inverted: True
+
+light:
+  - platform: monochromatic
+    name: "Xmas Side Green LED"
+    output: basic_green_led
+    id: basic_led

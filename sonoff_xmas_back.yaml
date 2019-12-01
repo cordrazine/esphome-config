@@ -1,0 +1,67 @@
+esphome:
+  name: sonoff_xmas_back
+  platform: ESP8266
+  board: esp01_1m
+  board_flash_mode: dout
+    
+wifi:
+  ssid: !secret wifi_not_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: 192.168.20.104
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+  ap:
+    ssid: "Xmas Back Hotspot"
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+api:
+
+logger:
+
+ota:
+
+sensor:
+  - platform: wifi_signal
+    name: "Xmas Back WiFi Signal"
+    id: xmas_back_wifi_signal
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: True
+    name: "Xmas Back Button"
+    on_press:
+      then:
+        - switch.toggle:
+            id: basic_relay
+        - light.toggle:
+            id: basic_led
+            
+  - platform: status
+    name: "Xmas Back Status"
+
+switch:
+  - platform: gpio
+    name: "Xmas Back Relay"
+    id: basic_relay
+    pin: GPIO12
+  - platform: restart
+    name: "Xmas Back Restart"
+
+output:
+  - platform: esp8266_pwm
+    id: basic_green_led
+    pin:
+      number: GPIO13
+      inverted: True
+
+light:
+  - platform: monochromatic
+    name: "Xmas Back Green LED"
+    output: basic_green_led
+    id: basic_led

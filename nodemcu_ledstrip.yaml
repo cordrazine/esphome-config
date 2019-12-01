@@ -1,0 +1,128 @@
+esphome:
+  name: nodemcu_ledstrip
+  platform: ESP8266
+  board: nodemcuv2
+    
+wifi:
+  ssid: !secret wifi_not_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: 192.168.20.101
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+  ap:
+    ssid: "LEDStrip Hotspot"
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+api:
+
+logger:
+
+ota:
+
+sensor:
+  - platform: wifi_signal
+    name: "LEDStrip WiFi Signal"
+    
+switch:
+  - platform: restart
+    name: "LEDStrip Restart" 
+
+light:
+  - platform: fastled_clockless
+    chipset: WS2812B
+    pin: D3
+    num_leds: 300
+    rgb_order: GRB
+    name: "LEDStrip Light"
+    id: ledstrip
+    effects:
+      - flicker:
+      - flicker:
+          name: Flicker Effect Custom all
+          alpha: 95%
+          intensity: 1.5%
+      - strobe:
+      - strobe:
+          name: Strobe Effect With Custom Values
+          colors:
+            - state: True
+              brightness: 100%
+              red: 100%
+              green: 90%
+              blue: 0%
+              duration: 500ms
+            - state: False
+              duration: 250ms
+            - state: True
+              brightness: 100%
+              red: 0%
+              green: 100%
+              blue: 0%
+              duration: 500ms
+      - random:
+      - random:
+          name: "My Slow Random Effect"
+          transition_length: 30s
+          update_interval: 30s
+      - random:
+          name: "My Fast Random Effect"
+          transition_length: 4s
+          update_interval: 1s
+      - addressable_rainbow:
+      - addressable_rainbow:
+          name: Rainbow Effect Speed 100
+          speed: 100
+          width: 50
+      - addressable_color_wipe:
+      - addressable_color_wipe:
+          name: Color Wipe Effect With Custom Values
+          colors:
+            - red: 100%
+              green: 100%
+              blue: 100%
+              num_leds: 1
+            - red: 0%
+              green: 0%
+              blue: 0%
+              num_leds: 1
+          add_led_interval: 100ms
+          reverse: False
+      - addressable_scan:
+      - addressable_scan:
+          name: Scan Effect With Custom Values
+          move_interval: 100ms
+          scan_width: 1
+      - addressable_scan:
+          name: Scan 20dots
+          move_interval: 10ms
+          scan_width: 20
+      - addressable_twinkle:
+      - addressable_twinkle:
+          name: Twinkle White 50%
+          twinkle_probability: 50%
+          progress_interval: 16ms
+      - addressable_random_twinkle:
+      - addressable_random_twinkle:
+          name: Random Twinkle 50%
+          twinkle_probability: 50%
+          progress_interval: 32ms
+      - addressable_random_twinkle:
+          name: Random Twinkle 90%
+          twinkle_probability: 90%
+          progress_interval: 32ms
+      - addressable_fireworks:
+      - addressable_fireworks:
+          name: Fireworks White Fast
+          update_interval: 1ms
+          spark_probability: 10%
+          use_random_color: false
+          fade_out_rate: 50
+      - addressable_flicker:
+      - addressable_flicker:
+          name: Flicker Effect With Custom Values
+          update_interval: 16ms
+          intensity: 5%
+      
