@@ -1,0 +1,46 @@
+esphome:
+  name: shower
+  platform: ESP32
+  board: mhetesp32minikit # MH-ET Live (ESP32 MiniKit, D1 mini compatible)
+#  board_flash_mode: dout
+    
+wifi:
+  ssid: !secret wifi_not_ground_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: 192.168.20.107
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+  # needed for hidden SSID
+  fast_connect: true
+  
+  ap:
+    ssid: "Shower Hotspot"
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+api:
+
+logger:
+
+ota:
+  password: !secret ota_psw
+
+esp32_ble_tracker:
+
+sensor:
+  - platform: wifi_signal
+    name: "Shower WiFi Signal"
+  - platform: ble_rssi
+    mac_address: !secret ble_mac_piet_fenix5
+    name: "Pietz Watch Fenix5"
+binary_sensor:
+  - platform: status
+    name: "Shower Status"
+  - platform: ble_presence
+    mac_address: !secret ble_mac_piet_fenix5
+    name: "Pietz Watch Fenix5 dig"
+switch:
+  - platform: restart
+    name: "Shower Restart"

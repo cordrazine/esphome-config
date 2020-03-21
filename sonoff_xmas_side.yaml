@@ -11,6 +11,8 @@ wifi:
     static_ip: 192.168.20.105
     gateway: 192.168.20.1
     subnet: 255.255.255.0
+  # needed for hidden SSID
+  fast_connect: true
   ap:
     ssid: "Xmas Side Hotspot"
     password: !secret wifi_hotspot_psw

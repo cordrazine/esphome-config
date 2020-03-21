@@ -1,9 +1,9 @@
-# Serviceroom Automated version. 
-# The PIR will switch on relay and switch off after xx minutes
+# Serviceroom Node-Red (NR) version
 # The automation is handled by by NR
 # Device: Sonoff Basic wih the following connections
 # GPIO14  DHT22 (AM2302)
 # GPIO03  SR501 (PIR sensor)
+
 esphome:
   name: serviceroom
   platform: ESP8266
@@ -52,20 +52,7 @@ binary_sensor:
     device_class: motion
     id: pir_sensor
     name: "Serviceroom PIR Sensor"
-    on_press:
-      # Turn on light
-      then:
-        - light.turn_on: basic_led
-        - switch.turn_on: basic_relay
-  - platform: template
-    id: pir_sensor_off
-    lambda: 'return id(pir_sensor).state;'
-    filters:
-    - delayed_off: 5min
-    on_release:
-    # Turn off light
-      - light.turn_off: basic_led
-      - switch.turn_off: basic_relay
+
   - platform: gpio
     pin:
       number: GPIO0
