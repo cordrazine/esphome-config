@@ -29,6 +29,10 @@ ota:
 
 esp32_ble_tracker:
 
+text_sensor:
+  - platform: ble_scanner
+    name: "BLE Devices Scanner"
+
 sensor:
   - platform: wifi_signal
     name: "Shower WiFi Signal"
@@ -41,6 +45,11 @@ binary_sensor:
   - platform: ble_presence
     mac_address: !secret ble_mac_piet_fenix5
     name: "Pietz Watch Fenix5 dig"
+  - platform: ble_presence
+    mac_address: !secret ble_mac_piet_phone_s9
+    name: "Pietz Phone"
 switch:
   - platform: restart
     name: "Shower Restart"
+
+

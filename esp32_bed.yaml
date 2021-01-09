@@ -1,0 +1,150 @@
+# Master Bedroom Bed controller
+# filename: esp32_bed.yaml
+# Automations are in Node-red
+# Functionality:
+#   Bed occupance detection sensors for each side of the bed with a Force Sensitive Resistor (FSR) SF15-600
+#   Bed underglow with individual addressable LED strip WS2812B of 5 meter (30 LED / meter)
+#   Motion sensor to detect motion under the bed (HC SR-501)
+#   Temperature and humidity sensor (BME280)
+#
+esphome:
+  name: bed
+  platform: ESP32
+  board: mhetesp32minikit # MH-ET Live (ESP32 MiniKit, D1 mini compatible)
+#  board_flash_mode: dout
+    
+wifi:
+  # Use AP upperfloor
+  ssid: !secret wifi_not_ground_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: 192.168.20.111
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+  # needed for hidden SSID
+  fast_connect: true
+  
+  ap:
+    ssid: "Bed Hotspot"
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+api:
+
+logger:
+
+ota:
+  password: !secret ota_psw
+
+# for the BME280
+i2c:
+  - id: bus_a
+    sda: GPIO21
+    scl: GPIO22
+    scan: True
+
+sensor:
+  - platform: bme280
+    temperature:
+      name: "Bed Temperature"
+      id: bed_temperature
+      oversampling: 16x
+    pressure:
+      name: "Bed Pressure"
+      id: bed_pressure
+    humidity:
+      name: "Bed Humidity"
+      id: bed_humidity
+    address: 0x76
+    update_interval: 15s
+  - platform: template
+    name: "Bed Absolute Humidity"
+    lambda: |-
+      const float mw = 18.01534;    // molar mass of water g/mol
+      const float r = 8.31447215;   // Universal gas constant J/mol/K
+      return (6.112 * powf(2.718281828, (17.67 * id(bed_temperature).state) /
+        (id(bed_temperature).state + 243.5)) * id(bed_humidity).state * mw) /
+        ((273.15 + id(bed_temperature).state) * r); // in grams/m^3
+    accuracy_decimals: 2
+    update_interval: 15s
+    icon: 'mdi:water'
+    unit_of_measurement: 'g/m³'
+  - platform: template
+    name: "Bed Dew Point"
+    lambda: return (243.5*(log(id(bed_humidity).state/100)+((17.67*id(bed_temperature).state)/
+      (243.5+id(bed_temperature).state)))/(17.67-log(id(bed_humidity).state/100)-
+      ((17.67*id(bed_temperature).state)/(243.5+id(bed_temperature).state))));
+    unit_of_measurement: °C
+    icon: 'mdi:thermometer-alert'
+
+  # Bed Right Side (Piet)
+  - platform: adc
+    pin: GPIO35
+    name: "Bed Right"
+    update_interval: 1s
+    attenuation: 11db
+    on_value_range:
+      - above: 0.5
+        then:
+          - logger.log: Bed right occupancy detected
+          - lambda: |-
+              id(bed_right_occupied).publish_state(true);
+      - below: 0.49999
+        then:
+          - logger.log: Bed right occupancy released
+          - lambda: |-
+              id(bed_right_occupied).publish_state(false);
+  # Bed Left Side (Senta)
+  - platform: adc
+    pin: GPIO34
+    name: "Bed Left"
+    update_interval: 1s
+    attenuation: 11db
+    on_value_range:
+      - above: 0.5
+        then:
+          - logger.log: Bed left occupancy detected
+          - lambda: |-
+              id(bed_left_occupied).publish_state(true);
+      - below: 0.49999
+        then:
+          - logger.log: Bed left occupancy released
+          - lambda: |-
+              id(bed_left_occupied).publish_state(false);
+    
+    # WIFI Signal Sensor
+  - platform: wifi_signal
+    name: "Bed WiFi Signal Sensor"
+    update_interval: 15s
+
+switch:
+  - platform: restart
+    name: "Bed Restart"
+
+binary_sensor:
+  - platform: template
+    name: "Bed Right Occupied"
+    id: bed_right_occupied
+    device_class: occupancy
+
+  - platform: template
+    name: "Bed Left Occupied"
+    id: bed_left_occupied
+    device_class: occupancy
+
+  # Motion sensor (HC SR-501)
+  - platform: gpio  
+    pin: GPIO4
+    name: "Bed Below Motion"
+    device_class: motion
+
+light:
+  - platform: fastled_clockless
+    chipset: WS2812B
+    pin: GPIO13
+    num_leds: 150
+    rgb_order: GRB
+    name: "Bed underglow"
+    id: bed_underglow
+    default_transition_length: 1s

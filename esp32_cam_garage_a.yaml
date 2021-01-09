@@ -1,0 +1,89 @@
+# Garage A esp32-cam 
+# Module Ai Thinker ESP32 Cam
+
+substitutions:
+  hostname: garage_a_cam
+  
+esphome:
+  name: $hostname
+  platform: ESP32
+  board: esp32dev
+
+wifi:
+  ssid: !secret wifi_not_ground_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: 192.168.20.108
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+  
+  # needed for hidden SSID
+  fast_connect: true
+
+  ap:
+    ssid: $hostname Hotspot
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+api:
+
+logger:
+
+ota:
+
+esp32_camera:
+# Configuration Ai Thinker
+  external_clock:
+    pin: GPIO0
+    frequency: 20MHz
+  i2c_pins:
+    sda: GPIO26
+    scl: GPIO27
+  data_pins: [GPIO5, GPIO18, GPIO19, GPIO21, GPIO36, GPIO39, GPIO34, GPIO35]
+  vsync_pin: GPIO25
+  href_pin: GPIO23
+  pixel_clock_pin: GPIO22
+  power_down_pin: GPIO32
+  name: Garage a
+  resolution: 1280x1024
+  
+sensor:
+  - platform: wifi_signal
+    name: $hostname WiFi Signal
+    update_interval: 60s
+  - platform: uptime
+    name: $hostname Uptime
+
+binary_sensor: 
+  # Availability status
+  - platform: status
+    name: $hostname Status
+    
+text_sensor:
+  - platform: version
+    name: $hostname ESPHome Version
+  - platform: wifi_info
+    ssid:
+      name: $hostname WiFi
+
+output:
+#flashlight
+  - platform: gpio
+    pin: GPIO4
+    id: gpio_4
+#statuslight
+  - platform: gpio
+    pin:
+      number: GPIO33
+      inverted: True
+    id: gpio_33
+light:
+#flashlight
+  - platform: binary
+    output: gpio_4
+    name: $hostname flash
+#statuslight
+  - platform: binary   
+    output: gpio_33
+    name: $hostname status

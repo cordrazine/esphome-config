@@ -1,0 +1,60 @@
+esphome:
+  name: sina
+  platform: ESP32
+  board: mhetesp32minikit # MH-ET Live (ESP32 MiniKit, D1 mini compatible)
+#  board_flash_mode: dout
+    
+wifi:
+  ssid: !secret wifi_not_ground_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: 192.168.20.110
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+  # needed for hidden SSID
+  fast_connect: true
+  
+  ap:
+    ssid: "Sina Hotspot"
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+api:
+
+logger:
+
+ota:
+  password: !secret ota_psw
+
+i2c:
+  - id: bus_a
+    sda: 21
+    scl: 22
+    scan: True
+
+sensor:
+  - platform: bme680
+    temperature:
+      name: "BME680 Temperature"
+      oversampling: 16x
+    pressure:
+      name: "BME680 Pressure"
+    humidity:
+      name: "BME680 Humidity"
+    gas_resistance:
+      name: "BME680 Gas Resistance"
+    i2c_id: bus_a
+    address: 0x77
+    update_interval: 10s
+  - platform: adc
+    pin: GPIO35
+    name: "Bed left"
+    update_interval: 1s
+    attenuation: 11db
+
+switch:
+  - platform: restart
+    name: "Sina Restart"
+
+

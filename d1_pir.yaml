@@ -1,0 +1,72 @@
+# Wemos D1 mini PIR test 
+# filename: d1_pir.yaml
+# Functionality
+# PIR sensor AM312 op pin D5
+# Button op D2
+# LED op D1
+esphome:
+  name: d1_pir
+  platform: ESP8266
+  board: d1_mini
+  board_flash_mode: dout
+
+# Wifi settings
+wifi:
+  ssid: !secret wifi_not_ground_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: 192.168.20.109
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+  
+  # needed for hidden SSID
+  fast_connect: true
+  ap:
+    ssid: "d1 pir Hotspot"
+    password: !secret wifi_hotspot_psw
+
+# Portal in case of lost of Wifi
+captive_portal:
+
+# API for connecting to Home-Assistant
+api:
+
+# Debug logger
+logger:
+
+# Over the air update
+ota:
+  password: !secret ota_psw
+
+# Status LED on the Wemos D1 Mini3
+
+status_led:
+  pin:
+    number: D4
+    inverted: true
+
+sensor:
+  # Uptime sensor
+  - platform: uptime
+    name: "d1 pir Uptime"
+
+switch:
+  # Restart switch
+  - platform: restart
+    name: "d1 pir Restart"
+  - platform: gpio
+    pin: D1
+    name: "d1 pir LED"
+
+binary_sensor:
+  - platform: gpio
+    pin: 
+      number: D2
+      mode: INPUT_PULLUP
+      inverted: True
+    name: "d1 pir button"
+    device_class: window
+  - platform: gpio
+    pin: D5
+    name: "d1 pir motion"
+    device_class: motion

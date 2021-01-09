@@ -5,14 +5,16 @@ esphome:
   board_flash_mode: dout
     
 wifi:
-  ssid: !secret wifi_not_ssid
+  ssid: !secret wifi_not_ground_ssid
   password: !secret wifi_not_psw
   manual_ip:
     static_ip: 192.168.20.105
     gateway: 192.168.20.1
     subnet: 255.255.255.0
+  
   # needed for hidden SSID
   fast_connect: true
+  
   ap:
     ssid: "Xmas Side Hotspot"
     password: !secret wifi_hotspot_psw
