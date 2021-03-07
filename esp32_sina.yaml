@@ -27,31 +27,37 @@ logger:
 ota:
   password: !secret ota_psw
 
-i2c:
-  - id: bus_a
-    sda: 21
-    scl: 22
-    scan: True
+esp32_ble_tracker:
+  on_ble_advertise:
+    - then:
+        - lambda: |-
+            for (auto data : x.get_manufacturer_datas()) {
+              if (strcmp(hexencode(data.data).c_str(), "02.15.D1.31.21.64.29.27.48.9F.91.28.7E.11.DB.FB.7A.81.00.01.00.01.BF (23)") == 0) {
+                ESP_LOGD("ble_adv", "pietz_phone_ble found");
+                id(ble_off_script).execute();
+              }
+              // ESP_LOGD("ble_adv", "    - %s", hexencode(data.data).c_str());
+            }
 
-sensor:
-  - platform: bme680
-    temperature:
-      name: "BME680 Temperature"
-      oversampling: 16x
-    pressure:
-      name: "BME680 Pressure"
-    humidity:
-      name: "BME680 Humidity"
-    gas_resistance:
-      name: "BME680 Gas Resistance"
-    i2c_id: bus_a
-    address: 0x77
-    update_interval: 10s
-  - platform: adc
-    pin: GPIO35
-    name: "Bed left"
-    update_interval: 1s
-    attenuation: 11db
+script:
+  - id: ble_off_script
+    mode: restart
+    then:
+      - binary_sensor.template.publish:
+          id: pietz_phone_ble
+          state: true
+      - delay: 3s
+      - binary_sensor.template.publish:
+          id: pietz_phone_ble
+          state: false
+
+binary_sensor:
+  - platform: template
+    device_class: presence
+    name: "Pietz Phone BLE"
+    id: pietz_phone_ble
+    filters:
+      - delayed_off: 3s
 
 switch:
   - platform: restart
