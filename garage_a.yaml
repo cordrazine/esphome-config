@@ -1,31 +1,70 @@
 # Garage A Wemos D1 controller
 # filename: garage_A.yaml (garage mini)
-# Automations are moved to Node-Red
+# Automations are moved to Node-Red / Automations
 # Functionality:
 #   Garagedoor controller with close and open endstop
 #   Temperature and humidity sensor
 #   Motion sensor
 #   Distance sensor for detecting car presence
 
-esphome:
-  name: garage_a
+### Declarations ####
+substitutions:
+# Identity
+  devicename: garage_a
+  upper_devicename: Garage A
+
+# Device
   platform: ESP8266
   board: d1_mini
   board_flash_mode: dout
 
+# Network
+  static_ip: 192.168.20.102
+  gateway: 192.168.20.1
+  subnet: 255.255.255.0
+
+# General
+  logger_level: VERBOSE
+
+### General configuration ####
+esphome:
+  name: ${devicename}
+  platform: $platform
+  board: $board
+  
+  # Set the Cover text sensor in the initial condition after boot
+  on_boot:
+    priority: -100
+    then: 
+      - if:
+          condition:
+            - binary_sensor.is_on: open_endstop_binary_sensor
+          then:
+            - text_sensor.template.publish:
+                id: garage_door_status
+                state: "Open"
+      - if:
+          condition:
+            - binary_sensor.is_on: close_endstop_binary_sensor
+          then:
+            - text_sensor.template.publish:
+                id: garage_door_status
+                state: "Closed"
+
 # Wifi settings
 wifi:
-  ssid: !secret wifi_not_ground_ssid
+  ssid: !secret wifi_not_ssid
   password: !secret wifi_not_psw
   manual_ip:
-    static_ip: 192.168.20.102
-    gateway: 192.168.20.1
-    subnet: 255.255.255.0
-  
+    static_ip: $static_ip
+    gateway: $gateway
+    subnet: $subnet
   # needed for hidden SSID
   fast_connect: true
+
   ap:
-    ssid: "Garage A Hotspot"
+    # Enable fallback hotspot (captive portal) in case wifi connection fails
+    ssid: ${upper_devicename} AP
     password: !secret wifi_hotspot_psw
 
 # Portal in case of lost of Wifi
@@ -34,8 +73,9 @@ captive_portal:
 # API for connecting to Home-Assistant
 api:
 
-# Debug logger
+# Enable logging
 logger:
+  level: $logger_level
 
 # Over the air update
 ota:
@@ -50,7 +90,7 @@ status_led:
 # Main garage door cover
 cover:
   - platform: endstop
-    name: "Garage A Cover"
+    name: "${upper_devicename} Cover"
     id: garage_door_cover
     device_class: garage
 
@@ -104,17 +144,17 @@ cover:
 # Garage door status text sensor. Status is set by the cover and by the endstop binary sensors
 text_sensor:
   - platform: template
-    name: "Garage Door Status"
+    name: "${upper_devicename} Status"
     id: garage_door_status
+  - <<: !include common/versionTextSensor.yaml
+  - <<: !include common/wifiInfoTextSensor.yaml
 
 binary_sensor:
-  # Availability status
-  - platform: status
-    name: "Garage A Status"
+  - <<: !include common/connectStatusSensor.yaml
 
   # Trigger button on the hardware. The trigger can be performed by pressing the button or shorting the pins
   - platform: gpio
-    name: "Garage A Trigger Button"
+    name: "${upper_devicename} Trigger Button"
     filters:
       - delayed_on: 100ms
     pin:
@@ -130,7 +170,7 @@ binary_sensor:
 
   # Garage cover OPEN endstop. When active (ON) the garage door is open
   - platform: gpio
-    name: "Garage A Open Endstop"
+    name: "${upper_devicename} Open Endstop"
     id: open_endstop_binary_sensor
     filters:
       - delayed_on: 500ms
@@ -154,7 +194,7 @@ binary_sensor:
   
   # Garage cover CLOSED endstop. When active (ON) the garage door is closed
   - platform: gpio
-    name: "Garage A Close Endstop"
+    name: "${upper_devicename} Close Endstop"
     id: close_endstop_binary_sensor
     filters:
       - delayed_on: 500ms
@@ -179,12 +219,12 @@ binary_sensor:
   # Motion sensor (SR-505)
   - platform: gpio  
     pin: D5
-    name: "Garage A Motion"
+    name: "${upper_devicename} Motion"
     device_class: motion
 
   # Car present sensor (can be performed automatically by code below of via Node-Red)
   - platform: template
-    name: "Garage A Car Present"
+    name: "${upper_devicename} Car Present"
     id: car_present
     device_class: occupancy
     lambda: |-
@@ -193,14 +233,13 @@ binary_sensor:
         // has timed out, resulting in a NaN (not a number) state
         // in that case, return {} to indicate that we don't know.
         return {};
-      } else if (id(distance_sensor).state < 1.00) {
+      } else if (id(distance_sensor).state < 1.50) {
         // Car Present
         return true;
       } else {
         // No Car Present
         return false;
       }
-
 
 sensor:
   # WIFI Signal Sensor
@@ -233,12 +272,11 @@ sensor:
     name: "Garage A Uptime"
 
 switch:
-  # Restart switch
-  - platform: restart
-    name: "Garage A Restart"
+  - <<: !include common/restartSwitch.yaml
+  # - <<: !include common/shutdownSwitch.yaml
 
   # Relay opener
   - platform: gpio
     pin: D1
-    name: "Garage A Relay"
+    name: "${upper_devicename} Relay"
     id: garage_relay

@@ -1,0 +1,178 @@
+# Dressing room Switch controller
+# filename: shelly1_Dressing_switch.yaml
+
+# --> single button version (on_click and on_long_press) use shelly1_Dressing_switch_multi.yaml for multipress
+
+# The Dressingroom lights is a Zigbee light so it should be always on. The wall-switch is only for human control.
+# The normal switch on-off is handled by present detection (PIR motion sensor) and the brightness is controlled by lux sensor and
+# determine by the light of the day (at night only dimmed light), during the day more light
+# However, sometimes, there are activities in this room which needs full brightness for this the wall-switch is there
+# Additional to this, there is the WAF which needs to be respected if Home-assistant is off-line or Zigbee fails
+# 
+# Basic on-off by wall-switch when Home-Assistant / Zigbee is unavailable is local (WAF)
+# Detailed automations in Home-assistant Automations or in Node-red
+# Due to its complexity (detecting home-assistant on-line or not, shelly stock firmware could not be used and used ESPhome)
+# The wall-switch is not a rocker type with a momentary switch type
+# 
+# Functionality:
+#   the input is connected via a momentary push-button (Taster in German) which input is high when pushed and low when released.
+#   When on-line (Connected via HA API): 
+#     Single Click
+#     Double Click
+#     Long press
+#     Relay is not switched 
+#   When off-line (no connection via HA API, WAF mode)
+#     Click toggles the relay on-off
+#
+### Declarations ####
+substitutions:
+# Identity
+  devicename: dressing_switch
+  upper_devicename: Dressing Switch
+
+# Device
+  platform: ESP8266
+  board: esp01_1m
+
+# Network
+  static_ip: 192.168.20.112
+  gateway: 192.168.20.1
+  subnet: 255.255.255.0
+
+# General
+  logger_level: VERBOSE
+
+### General configuration ####
+esphome:
+  name: ${devicename}
+  platform: $platform
+  board: $board
+#  board_flash_mode: dout
+  # Switch on relay at boot
+  on_boot:
+    - light.turn_on: lightid
+    
+wifi:
+  ssid: !secret wifi_not_upper_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: $static_ip
+    gateway: $gateway
+    subnet: $subnet
+  # needed for hidden SSID
+  fast_connect: true
+  
+  ap:
+    # Enable fallback hotspot (captive portal) in case wifi connection fails
+    ssid: ${upper_devicename} AP
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+# Enable Home Assistant API
+api:
+
+# Enable logging
+logger:
+  level: $logger_level
+
+ota:
+  password: !secret ota_psw
+
+## device specific configuration
+
+
+
+output:
+  - platform: gpio
+    pin: GPIO4
+    id: shelly_1_relay
+    
+light:
+  - platform: binary
+    name: ${upper_devicename} Light
+    output: shelly_1_relay
+    id: lightid
+
+
+
+binary_sensor:
+  - <<: !include common/connectStatusSensor.yaml
+  - platform: homeassistant
+    name: "Homeassistant Status"
+    entity_id: binary_sensor.dressing_light_status
+    id: homeassistantstatusid
+  - platform: gpio
+    pin:
+      number: GPIO5
+      #mode: INPUT_PULLUP
+      #inverted: True
+    name: ${upper_devicename} Switch
+    id: switchid
+
+    ## detection of valid long clicks 
+    ## detection of valid long clicks 
+    on_press:
+      then:
+        - logger.log: "On_Press"
+        - text_sensor.template.publish:
+            id: buttonid
+            state: "on_press"
+        - while:
+            condition:
+              binary_sensor.is_on: switchid
+            then:
+            - delay: 0.35s
+            - if:
+                condition:
+                  binary_sensor.is_on: switchid
+                then:
+                  - logger.log: "On_Long_Press"
+                  - text_sensor.template.publish:
+                      id: buttonid
+                      state: "on_long_press"
+                  # to update the sensor in HA, a different sensor value is required
+                  - text_sensor.template.publish:
+                      id: buttonid
+                      state: "on_long_idle" 
+    on_release:
+      then:
+        - logger.log: "On_release"
+        - text_sensor.template.publish:
+            id: buttonid
+            state: "on_release"
+    on_click:
+      then:
+        - logger.log: "Single Short Clicked"
+        - text_sensor.template.publish:
+                id: buttonid
+                state: "on_click"
+        # Check if we are NOT connected to HA (api.connected != TRUE) than 
+        #   switch light via relay else ignore (will be handled by automations / node-red)
+        - if:
+            condition:
+              # check the sensor status connected sensor
+              #binary_sensor.is_on: homeassistantstatusid
+              api.connected:
+            then:
+              # if api connected
+              - logger.log: "Light not toggle since connected to Home-Assistant (api.connected)"
+            else:
+              # if api not connected
+              - logger.log: "Light toggle since NOT connected to Home-Assistant (stand-alone mode)"
+              - light.toggle: lightid
+    
+sensor:
+  - <<: !include common/wifiSignalSensor.yaml
+  - <<: !include common/uptimeSensor.yaml
+ 
+text_sensor:
+  - <<: !include common/versionTextSensor.yaml
+  - <<: !include common/wifiInfoTextSensor.yaml
+  - platform: template
+    name: ${upper_devicename} Button
+    id: buttonid  
+
+switch:
+  - <<: !include common/restartSwitch.yaml
+  # - <<: !include common/shutdownSwitch.yaml

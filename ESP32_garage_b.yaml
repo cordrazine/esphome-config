@@ -1,0 +1,368 @@
+# Garage B Door controller
+# filename: ESP32_garage_b.yaml
+# Add bme680_bsec to the custom component directory
+# https://github.com/trvrnrth/esphome-bsec-bme680
+# D:\IoT\esphome-config\custom_components (in the directory where your YAML is)
+#
+# Automations are moved to Node-Red
+# Functionality:
+#   Garagedoor controller with close and open endstop
+#   Temperature and humidity sensor
+#   Motion sensor
+#   Distance sensor for detecting car presence
+#   BLE Presence detection
+#
+### Declarations ####
+substitutions:
+# Identity
+  devicename: garageb
+  upper_devicename: Garage B
+
+# Device
+  platform: ESP32
+  board: mhetesp32minikit # MH-ET Live (ESP32 MiniKit, D1 mini compatible)
+  #  board_flash_mode: dout
+
+# Network
+  static_ip: 192.168.20.113
+  gateway: 192.168.20.1
+  subnet: 255.255.255.0
+
+# General
+  logger_level: VERBOSE
+
+### General configuration ####
+esphome:
+  name: ${devicename}
+  platform: $platform
+  board: $board
+
+  # Set the Cover text sensor in the initial condition after boot
+  on_boot:
+    priority: -100
+    then: 
+      - if:
+          condition:
+            - binary_sensor.is_on: open_endstop_binary_sensor
+          then:
+            - text_sensor.template.publish:
+                id: garage_door_status
+                state: "Open"
+      - if:
+          condition:
+            - binary_sensor.is_on: close_endstop_binary_sensor
+          then:
+            - text_sensor.template.publish:
+                id: garage_door_status
+                state: "Closed"
+
+wifi:
+  ssid: !secret wifi_not_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: $static_ip
+    gateway: $gateway
+    subnet: $subnet
+  # needed for hidden SSID
+  fast_connect: true
+  
+  ap:
+    # Enable fallback hotspot (captive portal) in case wifi connection fails
+    ssid: ${upper_devicename} AP
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+# Enable Home Assistant API
+api:
+
+# Enable logging
+logger:
+  level: $logger_level
+
+ota:
+  password: !secret ota_psw
+
+bme680_bsec:
+    # i2c address
+    address: 0x77
+
+    # Temperature offset
+    temperature_offset: 0
+
+    # IAQ calculation mode
+    iaq_mode: static
+
+    # lp = lowPower is every 3 sec. ulp = ultralowpower is every 5 minutes
+    sample_rate: lp 
+
+    # Interval at which to save BSEC state
+    state_save_interval: 6h
+
+
+## device specific configuration
+# for the BME280
+i2c:
+  - id: bus_a
+    sda: GPIO21
+    scl: GPIO22
+    scan: True
+
+  # Presence detection
+esp32_ble_tracker:
+  scan_parameters:
+    # duration means that the presence sensor is being reset
+    duration: 5s
+
+cover:
+  - platform: endstop
+    name: "${upper_devicename} Cover"
+    id: garage_door_cover
+    device_class: garage
+
+    open_duration: 22s    # Measured 19:55 seconds
+    open_endstop: open_endstop_binary_sensor
+
+    close_duration: 22s  # Measured 20.46 seconds
+    close_endstop: close_endstop_binary_sensor
+
+    open_action:
+#     - lambda: ESP_LOGD("DEBUG", "open_action");
+      - if:
+          condition:
+            - binary_sensor.is_on: open_endstop_binary_sensor
+          else:
+            - switch.turn_on: garage_relay
+            - delay: 500ms
+            - switch.turn_off: garage_relay
+            - text_sensor.template.publish:
+                id: garage_door_status
+                state: "Opening"
+      
+    close_action:
+#     - lambda: ESP_LOGD("DEBUG", "close_action");
+      - if:
+          condition:
+            - binary_sensor.is_on: close_endstop_binary_sensor
+          else:
+            - switch.turn_on: garage_relay
+            - delay: 500ms
+            - switch.turn_off: garage_relay
+            - text_sensor.template.publish:
+                id: garage_door_status
+                state: "Closing"
+
+    stop_action:
+ #    - lambda: ESP_LOGD("DEBUG", "stop_action");
+      - if:
+          condition:
+            or:
+              - binary_sensor.is_on: open_endstop_binary_sensor
+              - binary_sensor.is_on: close_endstop_binary_sensor
+          else:
+            - switch.turn_on: garage_relay
+            - delay: 500ms
+            - switch.turn_off: garage_relay
+            - text_sensor.template.publish:
+                id: garage_door_status
+                state: "Stopped"
+
+sensor:
+  - platform: bme680_bsec
+    temperature:
+      name: "${upper_devicename} Temperature"
+      id: ${devicename}_temperature
+      # oversampling: 16x
+      filters:
+        - median
+    pressure:
+      name: "${upper_devicename} Pressure"
+      id: ${devicename}_pressure
+      filters:
+        - median
+    humidity:
+      name: "${upper_devicename} Humidity"
+      id: ${devicename}_humidity
+      filters:
+        - median
+    gas_resistance:
+      name: "${upper_devicename} Gas Resistance"
+      id: ${devicename}_gas
+      filters:
+        - median
+    iaq:
+      # Indoor air quality value
+      name: "${upper_devicename} IAQ"
+      filters:
+        - median
+    iaq_accuracy:
+      # IAQ accuracy as a numeric value of 0, 1, 2, 3
+      name: "${upper_devicename} Numeric IAQ Accuracy"
+    co2_equivalent:
+      # CO2 equivalent estimate in ppm
+      name: "${upper_devicename} CO2 Equivalent"
+      filters:
+        - median
+    breath_voc_equivalent:
+      # Volatile organic compounds equivalent estimate in ppm
+      name: "${upper_devicename} Breath VOC Equivalent"
+      filters:
+        - median      
+
+
+  - platform: template
+    name: "${upper_devicename} Absolute Humidity"
+    lambda: |-
+      const float mw = 18.01534;    // molar mass of water g/mol
+      const float r = 8.31447215;   // Universal gas constant J/mol/K
+      return (6.112 * powf(2.718281828, (17.67 * id(${devicename}_temperature).state) /
+        (id(${devicename}_temperature).state + 243.5)) * id(${devicename}_humidity).state * mw) /
+        ((273.15 + id(${devicename}_temperature).state) * r); // in grams/m^3
+    accuracy_decimals: 2
+    update_interval: 15s
+    icon: 'mdi:water'
+    unit_of_measurement: 'g/m³'
+  - platform: template
+    name: "${upper_devicename} Dew Point"
+    lambda: return (243.5*(log(id(${devicename}_humidity).state/100)+((17.67*id(${devicename}_temperature).state)/
+      (243.5+id(${devicename}_temperature).state)))/(17.67-log(id(${devicename}_humidity).state/100)-
+      ((17.67*id(${devicename}_temperature).state)/(243.5+id(${devicename}_temperature).state))));
+    unit_of_measurement: °C
+    icon: 'mdi:thermometer-alert'
+  - <<: !include common/wifiSignalSensor.yaml
+  - <<: !include common/uptimeSensor.yaml
+  
+  # Ultrasonice distance sensor
+  - platform: ultrasonic
+    trigger_pin: GPIO5
+    echo_pin: GPIO18
+    name: "${upper_devicename} Distance"
+    id: distance_sensor
+   # pulse_time: 20us
+    timeout: 4.0m
+    update_interval: 3s 
+    filters:
+      - delta : 0.1
+
+binary_sensor:
+  - <<: !include common/connectStatusSensor.yaml
+  - platform: gpio  
+    # Connect to the internal LED pin
+    pin: GPIO2
+    name: "${upper_devicename} Motion"
+    device_class: motion
+  
+  # Car present sensor (can be performed automatically by code below of via Node-Red)
+  - platform: template
+    name: "${upper_devicename} Car Present"
+    id: car_present
+    device_class: occupancy
+    lambda: |-
+      if (isnan(id(distance_sensor).state)) {
+        // isnan checks if the distance_sensor echo
+        // has timed out, resulting in a NaN (not a number) state
+        // in that case, return {} to indicate that we don't know.
+        return {};
+      } else if (id(distance_sensor).state < 1.50) {
+        // Car Present
+        return true;
+      } else {
+        // No Car Present
+        return false;
+      }
+   # Trigger button on the hardware. The trigger can be performed by pressing the button or shorting the pins
+  - platform: gpio
+    name: "${upper_devicename} Trigger Button"
+    filters:
+      - delayed_on: 100ms
+    pin:
+      number: GPIO23
+      inverted: true
+      mode: INPUT_PULLUP
+    on_press:
+      then:
+        - lambda: ESP_LOGD("DEBUG", "trigger_action");
+        - switch.turn_on: garage_relay
+        - delay: 500ms
+        - switch.turn_off: garage_relay
+
+  # Garage cover OPEN endstop. When active (ON) the garage door is open
+  - platform: gpio
+    name: "${upper_devicename} Open Endstop"
+    id: open_endstop_binary_sensor
+    filters:
+      - delayed_on: 500ms
+    pin:
+      number: GPIO15
+      inverted: true
+      mode: INPUT_PULLUP
+    on_press:
+      then:
+        - cover.control:
+            id: garage_door_cover
+            position: 100%
+        - text_sensor.template.publish:
+                id: garage_door_status
+                state: "Open"
+    on_release:
+      then:
+        - text_sensor.template.publish:
+                id: garage_door_status
+                state: "Closing"
+
+  # Garage cover CLOSED endstop. When active (ON) the garage door is closed
+  - platform: gpio
+    name: "${upper_devicename} Close Endstop"
+    id: close_endstop_binary_sensor
+    filters:
+      - delayed_on: 500ms
+    pin:
+      number: GPIO19
+      inverted: true
+      mode: INPUT_PULLUP
+    on_press:
+      then:
+        - cover.control:
+            id: garage_door_cover
+            position: 0%
+        - text_sensor.template.publish:
+            id: garage_door_status
+            state: "Closed"
+    on_release:
+      then:
+        - text_sensor.template.publish:
+            id: garage_door_status
+            state: "Opening"
+  
+  # Presence detection
+  - platform: ble_presence
+    ibeacon_uuid: b607d680-553c-493e-8193-1b0e5f1de4c2
+    ibeacon_major: 100
+    ibeacon_minor: 1
+    name: "Piet BLE ${upper_devicename}"
+  - platform: ble_presence
+    ibeacon_uuid: ea64b2b6-f3e1-48e2-9df5-15c9fdb34b64
+    ibeacon_major: 100
+    ibeacon_minor: 1
+    name: "Piet BLE ${upper_devicename}"
+text_sensor:
+  - <<: !include common/versionTextSensor.yaml
+  - <<: !include common/wifiInfoTextSensor.yaml
+
+# Garage door status text sensor. Status is set by the cover and by the endstop binary sensors
+  - platform: template
+    name: "${upper_devicename} Status"
+    id: garage_door_status
+
+  - platform: bme680_bsec
+    iaq_accuracy:
+      # IAQ accuracy as a text value of Stabilizing, Uncertain, Calibrating, Calibrated
+      name: "${upper_devicename} IAQ Accuracy"
+switch:
+  - <<: !include common/restartSwitch.yaml
+  # - <<: !include common/shutdownSwitch.yaml
+    # Relay opener
+  - platform: gpio
+    pin: GPIO4
+    name: "${upper_devicename} Relay"
+    id: garage_relay

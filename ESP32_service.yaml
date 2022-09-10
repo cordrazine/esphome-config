@@ -1,0 +1,80 @@
+# BLE Scanner
+# filename: ESP32_service.yaml
+#
+# 
+### Declarations ####
+substitutions:
+# Identity
+  devicename: service
+  upper_devicename: Service
+
+# Device
+  platform: ESP32
+  board: mhetesp32minikit # MH-ET Live (ESP32 MiniKit, D1 mini compatible)
+  #  board_flash_mode: dout
+
+# Network
+  static_ip: 192.168.20.116
+  gateway: 192.168.20.1
+  subnet: 255.255.255.0
+
+# General
+  logger_level: DEBUG
+
+### General configuration ####
+esphome:
+  name: ${devicename}
+  platform: $platform
+  board: $board
+    
+wifi:
+  ssid: !secret wifi_not_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: $static_ip
+    gateway: $gateway
+    subnet: $subnet
+  # needed for hidden SSID
+  fast_connect: true
+  
+  ap:
+    # Enable fallback hotspot (captive portal) in case wifi connection fails
+    ssid: ${upper_devicename} AP
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+# Enable Home Assistant API
+api:
+
+# Enable logging
+logger:
+  level: $logger_level
+
+ota:
+  password: !secret ota_psw
+
+binary_sensor:
+  - <<: !include common/connectStatusSensor.yaml
+  - platform: gpio
+    pin: GPIO2
+    name: "Service Motion"
+    device_class: motion
+
+text_sensor:
+  - <<: !include common/versionTextSensor.yaml
+  - <<: !include common/wifiInfoTextSensor.yaml
+
+switch:
+  - <<: !include common/restartSwitch.yaml
+  # - <<: !include common/shutdownSwitch.yaml
+
+sensor:
+  - platform: dht
+    pin: GPIO4
+    model: DHT22
+    temperature:
+      name: "${devicename} Temperature"
+    humidity:
+      name: "${devicename} Humidity"
+    update_interval: 5s

@@ -7,32 +7,50 @@
 #   Motion sensor to detect motion under the bed (HC SR-501)
 #   Temperature and humidity sensor (BME280)
 #
-esphome:
-  name: bed
+### Declarations ####
+substitutions:
+# Identity
+  devicename: bed
+  upper_devicename: Bed
+
+# Device
   platform: ESP32
   board: mhetesp32minikit # MH-ET Live (ESP32 MiniKit, D1 mini compatible)
-#  board_flash_mode: dout
+  #  board_flash_mode: dout
+
+# Network
+  static_ip: 192.168.20.111
+  gateway: 192.168.20.1
+  subnet: 255.255.255.0
+
+# General
+logger:
+  level: DEBUG
+
+esphome:
+  name: ${devicename}
+  platform: $platform
+  board: $board
     
 wifi:
   # Use AP upperfloor
-  ssid: !secret wifi_not_upper_ssid
+  ssid: !secret wifi_not_ssid
   password: !secret wifi_not_psw
   manual_ip:
-    static_ip: 192.168.20.111
-    gateway: 192.168.20.1
-    subnet: 255.255.255.0
+    static_ip: $static_ip
+    gateway: $gateway
+    subnet: $subnet
   # needed for hidden SSID
   fast_connect: true
   
   ap:
-    ssid: "Bed Hotspot"
+    ssid: ${upper_devicename} AP
     password: !secret wifi_hotspot_psw
 
 captive_portal:
 
+# Enable Home Assistant API
 api:
-
-logger:
 
 ota:
   password: !secret ota_psw
@@ -44,100 +62,167 @@ i2c:
     scl: GPIO22
     scan: True
 
+#esp32_ble_tracker:
+#  scan_parameters:
+#    # duration means that the presence sensor is being reset
+#    duration: 5s
+
 sensor:
   - platform: bme280
     temperature:
-      name: "Bed Temperature"
-      id: bed_temperature
+      name: "${upper_devicename} Temperature"
+      id: ${devicename}_temperature
       oversampling: 16x
     pressure:
-      name: "Bed Pressure"
-      id: bed_pressure
+      name: "${upper_devicename} Pressure"
+      id: ${devicename}_pressure
     humidity:
-      name: "Bed Humidity"
-      id: bed_humidity
+      name: "${upper_devicename} Humidity"
+      id: ${devicename}_humidity
     address: 0x76
     update_interval: 15s
   - platform: template
-    name: "Bed Absolute Humidity"
+    name: "${upper_devicename} Absolute Humidity"
     lambda: |-
       const float mw = 18.01534;    // molar mass of water g/mol
       const float r = 8.31447215;   // Universal gas constant J/mol/K
-      return (6.112 * powf(2.718281828, (17.67 * id(bed_temperature).state) /
-        (id(bed_temperature).state + 243.5)) * id(bed_humidity).state * mw) /
-        ((273.15 + id(bed_temperature).state) * r); // in grams/m^3
+      return (6.112 * powf(2.718281828, (17.67 * id(${devicename}_temperature).state) /
+        (id(${devicename}_temperature).state + 243.5)) * id(${devicename}_humidity).state * mw) /
+        ((273.15 + id(${devicename}_temperature).state) * r); // in grams/m^3
     accuracy_decimals: 2
     update_interval: 15s
     icon: 'mdi:water'
     unit_of_measurement: 'g/m³'
   - platform: template
-    name: "Bed Dew Point"
-    lambda: return (243.5*(log(id(bed_humidity).state/100)+((17.67*id(bed_temperature).state)/
-      (243.5+id(bed_temperature).state)))/(17.67-log(id(bed_humidity).state/100)-
-      ((17.67*id(bed_temperature).state)/(243.5+id(bed_temperature).state))));
+    name: "${upper_devicename} Dew Point"
+    lambda: return (243.5*(log(id(${devicename}_humidity).state/100)+((17.67*id(${devicename}_temperature).state)/
+      (243.5+id(${devicename}_temperature).state)))/(17.67-log(id(${devicename}_humidity).state/100)-
+      ((17.67*id(${devicename}_temperature).state)/(243.5+id(${devicename}_temperature).state))));
     unit_of_measurement: °C
     icon: 'mdi:thermometer-alert'
 
   # Bed Right Side (Piet)
   - platform: adc
     pin: GPIO35
-    name: "Bed Right"
-    update_interval: 1s
+    name: "${upper_devicename} Right"
+    update_interval: 0.5s
     attenuation: 11db
+    filters:
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 1
+      - or:
+        - throttle: 180s
+        - delta: 0.02
     on_value_range:
-      - above: 0.5
+      - above: 1.00
         then:
-          - logger.log: Bed right occupancy detected
-          - lambda: |-
-              id(bed_right_occupied).publish_state(true);
-      - below: 0.49999
+          - logger.log: ${upper_devicename} right occupancy detected
+          - binary_sensor.template.publish:
+              id: ${devicename}_right_occupied
+              state: ON
+          - if:
+              condition:
+                binary_sensor.is_on: ${devicename}_left_occupied
+              then:
+                - logger.log: ${upper_devicename} Both occupancy detected
+                - binary_sensor.template.publish:
+                    id: ${devicename}_both_occupied
+                    state: ON
+      - below: 0.99
         then:
-          - logger.log: Bed right occupancy released
-          - lambda: |-
-              id(bed_right_occupied).publish_state(false);
+          - logger.log: ${upper_devicename} right occupancy released
+          - binary_sensor.template.publish:
+              id: ${devicename}_right_occupied
+              state: OFF
+          - binary_sensor.template.publish:
+              id: ${devicename}_both_occupied
+              state: OFF
+
+
   # Bed Left Side (Senta)
-  - platform: adc
+  - platform: adc 
     pin: GPIO34
-    name: "Bed Left"
-    update_interval: 1s
+    name: "${upper_devicename} Left"
+    update_interval: 0.5s
     attenuation: 11db
+    filters:
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 1
+      - or:
+        - throttle: 180s
+        - delta: 0.02
+        
     on_value_range:
-      - above: 0.5
+      - above: 1.50
         then:
-          - logger.log: Bed left occupancy detected
-          - lambda: |-
-              id(bed_left_occupied).publish_state(true);
-      - below: 0.49999
+          - logger.log: ${upper_devicename} left occupancy detected
+          - binary_sensor.template.publish:
+              id: ${devicename}_left_occupied
+              state: ON
+          - if:
+              condition:
+                binary_sensor.is_on: ${devicename}_right_occupied
+              then:
+                - logger.log: ${upper_devicename} Both occupancy detected
+                - binary_sensor.template.publish:
+                    id: ${devicename}_both_occupied
+                    state: ON
+      - below: 1.49
         then:
-          - logger.log: Bed left occupancy released
-          - lambda: |-
-              id(bed_left_occupied).publish_state(false);
+          - logger.log: ${upper_devicename} left occupancy released
+          - binary_sensor.template.publish:
+              id: ${devicename}_left_occupied
+              state: OFF
+          - binary_sensor.template.publish:
+              id: ${devicename}_both_occupied
+              state: OFF
     
-    # WIFI Signal Sensor
-  - platform: wifi_signal
-    name: "Bed WiFi Signal Sensor"
-    update_interval: 15s
+  - <<: !include common/wifiSignalSensor.yaml
+  - <<: !include common/uptimeSensor.yaml
 
 switch:
-  - platform: restart
-    name: "Bed Restart"
+  - <<: !include common/restartSwitch.yaml
+  # - <<: !include common/shutdownSwitch.yaml
+
+text_sensor:
+  - <<: !include common/versionTextSensor.yaml
+  - <<: !include common/wifiInfoTextSensor.yaml
 
 binary_sensor:
   - platform: template
-    name: "Bed Right Occupied"
-    id: bed_right_occupied
+    name: "${upper_devicename} Right Occupied"
+    id: ${devicename}_right_occupied
     device_class: occupancy
 
   - platform: template
-    name: "Bed Left Occupied"
-    id: bed_left_occupied
+    name: "${upper_devicename} Left Occupied"
+    id: ${devicename}_left_occupied
+    device_class: occupancy
+
+  - platform: template
+    name: "${upper_devicename} Both Occupied"
+    id: ${devicename}_both_occupied
     device_class: occupancy
 
   # Motion sensor (HC SR-501)
   - platform: gpio  
     pin: GPIO4
-    name: "Bed Below Motion"
+    name: "${upper_devicename} Below Motion"
     device_class: motion
+
+ #- platform: ble_presence
+ #   ibeacon_uuid: b607d680-553c-493e-8193-1b0e5f1de4c2
+ #   ibeacon_major: 100
+ #   ibeacon_minor: 1
+ #   name: "Piet BLE ${upper_devicename}"
+
+ #- platform: ble_presence
+ #   ibeacon_uuid: ea64b2b6-f3e1-48e2-9df5-15c9fdb34b64
+ #   ibeacon_major: 100
+ #   ibeacon_minor: 1
+ #   name: "Senta BLE ${upper_devicename}"
 
 light:
   - platform: fastled_clockless
@@ -145,6 +230,6 @@ light:
     pin: GPIO13
     num_leds: 150
     rgb_order: GRB
-    name: "Bed underglow"
-    id: bed_underglow
+    name: "${upper_devicename} underglow"
+    id: ${devicename}_underglow
     default_transition_length: 1s

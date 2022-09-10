@@ -1,0 +1,4 @@
+# Wifi signal Sensor
+- platform: wifi_signal
+  name: ${upper_devicename} WiFi Signal Sensor
+  update_interval: 15s

@@ -1,0 +1,67 @@
+    ## detection of valid long clicks 
+    on_press:
+      then:
+        - logger.log: "On_Press"
+        - text_sensor.template.publish:
+            id: buttonid
+            state: "on_press"
+        - while:
+            condition:
+              binary_sensor.is_on: switchid
+            then:
+            - delay: 1s
+            - if:
+                condition:
+                  binary_sensor.is_on: switchid
+                then:
+                  - logger.log: "On_Long_Press"
+                  - text_sensor.template.publish:
+                      id: buttonid
+                      state: "on_long_press"
+                  # to update the sensor in HA, a different sensor value is required
+                  - text_sensor.template.publish:
+                      id: buttonid
+                      state: "on_long_idle" 
+    on_release:
+      then:
+        - logger.log: "On_release"
+        - text_sensor.template.publish:
+            id: buttonid
+            state: "on_release"
+    
+    ## detection of valid clicks    
+    on_multi_click:
+
+    - timing:
+        - ON for at most 1s
+        - OFF for at least 0.5s
+      then:
+        - logger.log: "Single Short Clicked"
+        - text_sensor.template.publish:
+                id: buttonid
+                state: "on_click"
+        # Check if we are NOT connected to HA (api.connected != TRUE) than 
+        #   switch light via relay else ignore (will be handled by automations / node-red)
+        - if:
+            condition:
+              # check the sensor status connected sensor
+              #binary_sensor.is_on: homeassistantstatusid
+              api.connected:
+            then:
+              # if api connected
+              - logger.log: "Light not toggle since connected to Home-Assistant (api.connected)"
+            else:
+              # if api not connected
+              - logger.log: "Light toggle since NOT connected to Home-Assistant (stand-alone mode)"
+              - light.toggle: lightid
+              
+    - timing:
+        - ON for at most 1s
+        - OFF for at most 0.3s
+        - ON for at most 1s
+        - OFF for at least 0.2s
+      then:
+        - logger.log: "Double Clicked"
+        - text_sensor.template.publish:
+                id: buttonid
+                state: "on_double_click"

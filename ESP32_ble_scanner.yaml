@@ -1,0 +1,97 @@
+# BLE Scanner
+# filename: ESP32_BLE.yaml
+#
+# 
+### Declarations ####
+substitutions:
+# Identity
+  devicename: ble-scanner
+  upper_devicename: BLE Scanner
+
+# Device
+  platform: ESP32
+  board: mhetesp32minikit # MH-ET Live (ESP32 MiniKit, D1 mini compatible)
+  #  board_flash_mode: dout
+
+# Network
+  static_ip: 192.168.20.114
+  gateway: 192.168.20.1
+  subnet: 255.255.255.0
+
+# General
+  logger_level: DEBUG
+
+### General configuration ####
+esphome:
+  name: ${devicename}
+  platform: $platform
+  board: $board
+    
+wifi:
+  ssid: !secret wifi_not_ground_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: $static_ip
+    gateway: $gateway
+    subnet: $subnet
+  # needed for hidden SSID
+  fast_connect: true
+  
+  ap:
+    # Enable fallback hotspot (captive portal) in case wifi connection fails
+    ssid: ${upper_devicename} AP
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+# Enable Home Assistant API
+api:
+
+# Enable logging
+logger:
+  level: $logger_level
+
+ota:
+  password: !secret ota_psw
+
+binary_sensor:
+  - <<: !include common/connectStatusSensor.yaml
+  - platform: ble_presence
+    ibeacon_uuid: b607d680-553c-493e-8193-1b0e5f1de4c2
+    ibeacon_major: 100
+    ibeacon_minor: 1
+    name: "Piet BLE ${upper_devicename}"
+#  - platform: ble_presence
+#    ibeacon_uuid: ea64b2b6-f3e1-48e2-9df5-15c9fdb34b64
+#    ibeacon_major: 100
+#    ibeacon_minor: 1
+#    name: "Senta BLE ${upper_devicename}"
+#  - platform: ble_presence
+#    mac_address: f3:99:f8:14:21:28
+#    name: "Sina BLE ${upper_devicename}"
+text_sensor:
+  - <<: !include common/versionTextSensor.yaml
+  - <<: !include common/wifiInfoTextSensor.yaml
+
+switch:
+  - <<: !include common/restartSwitch.yaml
+  # - <<: !include common/shutdownSwitch.yaml
+
+#  "B6:07:D6:80:55:3C:49:3E:81:93:1B:0E:5F:1D:E4:C2"
+
+esp32_ble_tracker:
+  scan_parameters:
+    #duration means that the presence sensor is being reset
+    duration: 5s
+
+#sensor:
+#- platform: dht
+#  pin: GPIO4
+#  temperature:
+#    name: "Outside Temperature"
+#  humidity:
+#    name: "Outside Humidity"
+#  update_interval: 15s
+#- platform: ble_rssi
+  #ibeacon_uuid: ea64b2b6-f3e1-48e2-9df5-15c9fdb34b64
+#  name: "Piet BLE RSSI ${upper_devicename}"

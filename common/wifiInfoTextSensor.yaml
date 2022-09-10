@@ -1,0 +1,7 @@
+  # ESPhome version sensor
+# Wifi Information sensors
+- platform: wifi_info
+  ip_address:
+    name: ${upper_devicename} IP
+  ssid:
+    name: ${upper_devicename} SSID

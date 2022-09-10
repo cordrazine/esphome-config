@@ -1,0 +1,4 @@
+# ESPhome version sensor
+- platform: version
+  name: ${upper_devicename} Version
+  hide_timestamp: True

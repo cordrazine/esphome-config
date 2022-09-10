@@ -61,6 +61,6 @@ binary_sensor:
 
 switch:
   - platform: restart
-    name: "Sina Restarts"
+    name: "Sina Restart"
 
 
