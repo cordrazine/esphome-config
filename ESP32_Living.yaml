@@ -1,14 +1,12 @@
-# BLE Scanner
-# filename: ESP32_service.yaml
-# Settings from https://gist.github.com/kmdm/c01c0693b1380d826af200a3e9b2a656#file-esphome_ble_config-yaml
-#  and from https://github.com/rpatel3001/BleDistance
+# Living Multi Sensor
+# filename: ESP32_living.yaml
 #
 # 
 ### Declarations ####
 substitutions:
 # Identity
-  devicename: office
-  upper_devicename: Office
+  devicename: living
+  upper_devicename: Living
 
 # Device
   platform: ESP32
@@ -16,7 +14,7 @@ substitutions:
   #  board_flash_mode: dout
 
 # Network
-  static_ip: 192.168.20.117
+  static_ip: 192.168.20.120
   gateway: 192.168.20.1
   subnet: 255.255.255.0
 
@@ -80,43 +78,23 @@ i2c:
     scl: GPIO22
     scan: True
 
-
 sensor:
-  - platform: dht
-    pin: GPIO4
-    model: DHT22
+  - platform: bme280
     temperature:
       name: "${upper_devicename} Temperature"
       id: ${devicename}_temperature
+      oversampling: 16x
+    pressure:
+      name: "${upper_devicename} Pressure"
+      id: ${devicename}_pressure
     humidity:
       name: "${upper_devicename} Humidity"
       id: ${devicename}_humidity
-    update_interval: 10s
-
-  - platform: bme280
-    temperature:
-      name: "${upper_devicename} Temperature BME280"
-      id: ${devicename}_temperature2
-      oversampling: 16x
-    pressure:
-      name: "${upper_devicename} Pressure BME280"
-      id: ${devicename}_pressure2
-    humidity:
-      name: "${upper_devicename} Humidity BME280"
-      id: ${devicename}_humidity2
     address: 0x76
-    update_interval: 10s
+    update_interval: 15s
 
-  - platform: aht10
-    temperature:
-      name: "${upper_devicename} Temperature aht10"
-      id: ${devicename}_temperature3
-    humidity:
-      name: "${upper_devicename} Humidity aht10"
-      id: ${devicename}_humidity3
-    update_interval: 10s
 
 esp32_ble_tracker:
-  
+
 bluetooth_proxy:
   active: true

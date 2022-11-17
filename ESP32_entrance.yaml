@@ -1,7 +1,6 @@
-# BLE Scanner
-# filename: ESP32_service.yaml
-# Settings from https://gist.github.com/kmdm/c01c0693b1380d826af200a3e9b2a656#file-esphome_ble_config-yaml
-#  and from https://github.com/rpatel3001/BleDistance
+# ESP32 Entrance
+# filename: ESP32_entrance.yaml
+
 #
 # 
 ### Declarations ####
@@ -28,22 +27,6 @@ esphome:
   name: ${devicename}
   platform: $platform
   board: $board
-  includes:
-    - custom_components/lib/OneEuro.h
-    - custom_components/ble_dist.h
-  # Pietz Pixel 6  Use BLE scanner to get the UUID: C2E41D5F-0E1B-9381-3E49-3C5580D607B6 bit this is backwards so you have to use the original UUIID from the app.
-  on_boot:
-    then:
-      lambda: |-
-        addTracker("pietzphone", "b607d680-553c-493e-8193-1b0e5f1de4c2"); 
-
-# MQTT broker configuration
-#mqtt:
-#  broker: !secret mqtt_broker
-#  username: !secret mqtt_username
-#  password: !secret mqtt_password
-#  discovery: False # Only if you use the HA API usually
-#  id: mqtt_client
 
 wifi:
   ssid: !secret wifi_not_ssid
@@ -80,13 +63,6 @@ binary_sensor:
       mode: INPUT_PULLUP
     name: "${devicename} Motion"
     device_class: motion
-  - platform: ble_presence
-    ibeacon_uuid: 'b607d680-553c-493e-8193-1b0e5f1de4c2'
-    name: "${devicename} BLE PietzPhone Presence"
-    id: "BLE_pietz_phone_presence"
-    filters:
-      - delayed_off: 10s
-
 
 text_sensor:
   - <<: !include common/versionTextSensor.yaml
@@ -106,51 +82,7 @@ sensor:
       name: "${devicename} Humidity"
     update_interval: 10s
 
-  - platform: template
-    name: "${devicename} BLE PietzPhone Dist"
-    id: pietz_phone_dist
-    update_interval: 3s
-    unit_of_measurement: "m"
-    device_class: ""
-    state_class: "measurement"
-    accuracy_decimals: 1
-    entity_category: "diagnostic"
-    # conversion from ft to meter
-    lambda: |-
-      return getTracker("pietzphone").get_dist()*0.3048;
-  - platform: template
-    name: "${devicename} BLE PietzPhone Raw Dist"
-    id: pietz_phone_raw_dist
-    update_interval: 3s
-    unit_of_measurement: "m"
-    device_class: ""
-    state_class: "measurement"
-    accuracy_decimals: 1
-    entity_category: "diagnostic"
-    # conversion from ft to meter
-    lambda: |-
-      return getTracker("pietzphone").get_raw_dist()*0.3048;    
-      
-  - platform: template
-    name: "${devicename} BLE PietzPhone RSSI"
-    id: pietz_phone_rssi
-    update_interval: 3s
-    #unit_of_measurement: "m"
-    device_class: ""
-    state_class: "measurement"
-    accuracy_decimals: 0
-    entity_category: "diagnostic"
-    # conversion from ft to meter
-    lambda: |-
-      return getTracker("pietzphone").get_rssi();
-
 esp32_ble_tracker:
-  scan_parameters:
-    interval: 320ms
-    window: 300ms
-    # duration: 60s
-    active: true
-  on_ble_advertise:
-    then:
-      - lambda: |-
-          parseAdvertisement(x);
+
+bluetooth_proxy:
+  active: true

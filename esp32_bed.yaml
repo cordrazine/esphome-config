@@ -115,7 +115,7 @@ sensor:
         - throttle: 180s
         - delta: 0.02
     on_value_range:
-      - above: 1.00
+      - above: 1.50
         then:
           - logger.log: ${upper_devicename} right occupancy detected
           - binary_sensor.template.publish:
@@ -129,7 +129,7 @@ sensor:
                 - binary_sensor.template.publish:
                     id: ${devicename}_both_occupied
                     state: ON
-      - below: 0.99
+      - below: 1.49
         then:
           - logger.log: ${upper_devicename} right occupancy released
           - binary_sensor.template.publish:
