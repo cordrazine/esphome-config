@@ -58,12 +58,13 @@ ota:
 
 binary_sensor:
   - <<: !include common/connectStatusSensor.yaml
-  - platform: gpio
-    pin:
-      number: GPIO15
-      mode: INPUT_PULLUP
-    name: "${devicename} Motion"
-    device_class: motion
+  - platform: ld2410
+    has_target:
+      name: "${upper_devicename} Presence"
+    has_moving_target:
+      name: "${upper_devicename} Moving Target"
+    has_still_target:
+      name: "${upper_devicename} Still Target"
 
 text_sensor:
   - <<: !include common/versionTextSensor.yaml
@@ -73,50 +74,73 @@ switch:
   - <<: !include common/restartSwitch.yaml
   # - <<: !include common/shutdownSwitch.yaml
 
-# for the BME280
+# for the AHT10 / BH1750
 i2c:
   - id: bus_a
     sda: GPIO21
     scl: GPIO22
     scan: True
 
+# for the LD2410 mmWaveSensor
+uart:
+  #id: uart1
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+  baud_rate: 256000
+  parity: NONE
+  stop_bits: 1
 
 sensor:
-  - platform: dht
-    pin: GPIO4
-    model: DHT22
+  - platform: aht10
     temperature:
       name: "${upper_devicename} Temperature"
       id: ${devicename}_temperature
     humidity:
       name: "${upper_devicename} Humidity"
       id: ${devicename}_humidity
-    update_interval: 10s
-
-  - platform: bme280
-    temperature:
-      name: "${upper_devicename} Temperature BME280"
-      id: ${devicename}_temperature2
-      oversampling: 16x
-    pressure:
-      name: "${upper_devicename} Pressure BME280"
-      id: ${devicename}_pressure2
-    humidity:
-      name: "${upper_devicename} Humidity BME280"
-      id: ${devicename}_humidity2
-    address: 0x76
-    update_interval: 10s
-
-  - platform: aht10
-    temperature:
-      name: "${upper_devicename} Temperature aht10"
-      id: ${devicename}_temperature3
-    humidity:
-      name: "${upper_devicename} Humidity aht10"
-      id: ${devicename}_humidity3
-    update_interval: 10s
+    update_interval: 5s
+  - platform: bh1750
+    name: "${upper_devicename} Illuminance"
+    id: ${devicename}_illuminance
+    address: 0x23
+    update_interval: 5s
+  - platform: ld2410
+    moving_distance:
+      name: "${upper_devicename} Moving Distance"
+    still_distance:
+      name: "${upper_devicename} Still Distance"
+    moving_energy:
+      name: "${upper_devicename} Move Energy"
+    still_energy:
+      name: "${upper_devicename} Still Energy"
+    detection_distance:
+      name: "${upper_devicename} Detection Distance"
 
 esp32_ble_tracker:
   
 bluetooth_proxy:
   active: true
+
+ld2410:
+  timeout: 5s
+  max_move_distance : 5.25m
+  max_still_distance: 5.25m
+  g0_move_threshold: 25
+  g1_move_threshold: 25
+  g2_move_threshold: 20
+  g3_move_threshold: 20
+  g4_move_threshold: 20
+  g5_move_threshold: 20
+  g6_move_threshold: 10
+  g7_move_threshold: 10
+  g8_move_threshold: 10
+
+  g0_still_threshold: 0
+  g1_still_threshold: 0
+  g2_still_threshold: 25
+  g3_still_threshold: 25
+  g4_still_threshold: 25
+  g5_still_threshold: 25
+  g6_still_threshold: 15
+  g7_still_threshold: 15
+  g8_still_threshold: 15

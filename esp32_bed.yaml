@@ -62,10 +62,10 @@ i2c:
     scl: GPIO22
     scan: True
 
-#esp32_ble_tracker:
-#  scan_parameters:
-#    # duration means that the presence sensor is being reset
-#    duration: 5s
+esp32_ble_tracker:
+
+bluetooth_proxy:
+  active: true
 
 sensor:
   - platform: bme280
@@ -211,18 +211,6 @@ binary_sensor:
     pin: GPIO4
     name: "${upper_devicename} Below Motion"
     device_class: motion
-
- #- platform: ble_presence
- #   ibeacon_uuid: b607d680-553c-493e-8193-1b0e5f1de4c2
- #   ibeacon_major: 100
- #   ibeacon_minor: 1
- #   name: "Piet BLE ${upper_devicename}"
-
- #- platform: ble_presence
- #   ibeacon_uuid: ea64b2b6-f3e1-48e2-9df5-15c9fdb34b64
- #   ibeacon_major: 100
- #   ibeacon_minor: 1
- #   name: "Senta BLE ${upper_devicename}"
 
 light:
   - platform: fastled_clockless

@@ -29,8 +29,10 @@ substitutions:
   subnet: 255.255.255.0
 
 # General
-  logger_level: VERBOSE
-
+  logger_level: debug
+debug:
+  update_interval: 5s
+  
 ### General configuration ####
 esphome:
   name: ${devicename}
@@ -107,12 +109,6 @@ i2c:
     sda: GPIO21
     scl: GPIO22
     scan: True
-
-  # Presence detection
-esp32_ble_tracker:
-  scan_parameters:
-    # duration means that the presence sensor is being reset
-    duration: 5s
 
 cover:
   - platform: endstop
@@ -334,17 +330,6 @@ binary_sensor:
             id: garage_door_status
             state: "Opening"
   
-  # Presence detection
-  - platform: ble_presence
-    ibeacon_uuid: b607d680-553c-493e-8193-1b0e5f1de4c2
-    ibeacon_major: 100
-    ibeacon_minor: 1
-    name: "Piet BLE ${upper_devicename}"
-  - platform: ble_presence
-    ibeacon_uuid: ea64b2b6-f3e1-48e2-9df5-15c9fdb34b64
-    ibeacon_major: 100
-    ibeacon_minor: 1
-    name: "Piet BLE ${upper_devicename}"
 text_sensor:
   - <<: !include common/versionTextSensor.yaml
   - <<: !include common/wifiInfoTextSensor.yaml
@@ -366,3 +351,9 @@ switch:
     pin: GPIO4
     name: "${upper_devicename} Relay"
     id: garage_relay
+
+
+esp32_ble_tracker:
+
+bluetooth_proxy:
+  active: true
