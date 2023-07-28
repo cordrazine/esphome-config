@@ -289,7 +289,7 @@ binary_sensor:
     filters:
       - delayed_on: 500ms
     pin:
-      number: GPIO15
+      number: GPIO13
       inverted: true
       mode: INPUT_PULLUP
     on_press:
@@ -313,7 +313,7 @@ binary_sensor:
     filters:
       - delayed_on: 500ms
     pin:
-      number: GPIO19
+      number: GPIO3
       inverted: true
       mode: INPUT_PULLUP
     on_press:
@@ -348,7 +348,7 @@ switch:
   # - <<: !include common/shutdownSwitch.yaml
     # Relay opener
   - platform: gpio
-    pin: GPIO4
+    pin: GPIO17
     name: "${upper_devicename} Relay"
     id: garage_relay
 

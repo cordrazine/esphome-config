@@ -213,11 +213,11 @@ binary_sensor:
     device_class: motion
 
 light:
-  - platform: fastled_clockless
-    chipset: WS2812B
+  - platform: neopixelbus
+    variant: WS2812X
     pin: GPIO13
     num_leds: 150
-    rgb_order: GRB
+    type: GRB
     name: "${upper_devicename} underglow"
     id: ${devicename}_underglow
     default_transition_length: 1s
