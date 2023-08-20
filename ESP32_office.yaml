@@ -1,8 +1,9 @@
-# BLE Scanner
-# filename: ESP32_service.yaml
-# Settings from https://gist.github.com/kmdm/c01c0693b1380d826af200a3e9b2a656#file-esphome_ble_config-yaml
-#  and from https://github.com/rpatel3001/BleDistance
-#
+# Office sensor
+# filename: esp32_office.yaml
+# Functionality:
+#   Motion / presence sensor with mmWave
+#   Temperature and humidity sensor (BME280)
+#   BLE Tracker
 # 
 ### Declarations ####
 substitutions:
