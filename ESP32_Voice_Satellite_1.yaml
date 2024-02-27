@@ -1,0 +1,205 @@
+# VOice Satellite 1
+# filename: esp32_voice_satellite_1.yaml
+# Functionality:
+#   Voice Satelite
+#  Source: https://gist.github.com/EverythingSmartHome/055fbdde31a607ef9d695d5cac780e94
+#
+### Declarations ####
+substitutions:
+# Identity
+  devicename: office-voice
+  upper_devicename: Office Voice
+
+# Device
+  platform: ESP32
+  board: nodemcu-32s
+  board_flash_mode: dout
+
+# Network
+  static_ip: 192.168.20.121
+  gateway: 192.168.20.1
+  subnet: 255.255.255.0
+
+# General
+  logger_level: DEBUG
+
+
+
+### General configuration ####
+esphome:
+  name: ${devicename}
+  platform: $platform
+  board: $board
+  on_boot:
+      - priority: -100
+        then:
+          - wait_until: api.connected
+          - delay: 1s
+          - if:
+              condition:
+                switch.is_on: use_wake_word
+              then:
+                - voice_assistant.start_continuous:
+
+wifi:
+  ssid: !secret wifi_not_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: $static_ip
+    gateway: $gateway
+    subnet: $subnet
+  # needed for hidden SSID
+  fast_connect: true
+  
+  ap:
+    # Enable fallback hotspot (captive portal) in case wifi connection fails
+    ssid: ${upper_devicename} AP
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+# Enable Home Assistant API
+api:
+
+# Enable logging
+logger:
+  level: $logger_level
+
+ota:
+  password: !secret ota_psw
+
+# ***** actual implementation *****
+i2s_audio:
+  - id: i2s_in
+    i2s_lrclk_pin: GPIO26   # SWS
+    i2s_bclk_pin: GPIO27    # SCK
+  - id: i2s_out
+    i2s_bclk_pin: GPIO18    # bclk
+    i2s_lrclk_pin: GPIO19   # lrclk
+
+
+
+microphone:
+  - platform: i2s_audio
+    id: mic
+    adc_type: external
+    i2s_audio_id: i2s_in
+    i2s_din_pin: GPIO13
+    pdm: false
+
+speaker:
+  - platform: i2s_audio
+    id: big_speaker
+    i2s_audio_id: i2s_out
+    dac_type: external
+    i2s_dout_pin: GPIO25
+    mode: mono
+
+voice_assistant:
+  microphone: mic
+  use_wake_word: false
+  noise_suppression_level: 2
+  auto_gain: 31dBFS
+  volume_multiplier: 2.0
+  speaker: big_speaker
+  id: assist
+  on_listening:
+    - light.turn_on:
+        id: led
+        blue: 100%
+        red: 0%
+        green: 0%
+        brightness: 100%
+        effect: pulse
+  on_tts_start:
+    - light.turn_on:
+        id: led
+        blue: 0%
+        red: 0%
+        green: 100%
+        brightness: 100%
+        effect: pulse
+  on_end:
+    - delay: 100ms
+    - wait_until:
+        not:
+          speaker.is_playing:
+    - script.execute: reset_led
+  on_error:
+    - light.turn_on:
+        id: led
+        blue: 0%
+        red: 100%
+        green: 0%
+        brightness: 100%
+        effect: none
+    - delay: 1s
+    - script.execute: reset_led
+    - script.wait: reset_led
+    - lambda: |-
+        if (code == "wake-provider-missing" || code == "wake-engine-missing") {
+          id(use_wake_word).turn_off();
+        }
+switch:
+  - <<: !include common/restartSwitch.yaml
+  - platform: template
+    name: ${devicename} Use wake word
+    id: use_wake_word
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - lambda: id(assist).set_use_wake_word(true);
+      - if:
+          condition:
+            not:
+              - voice_assistant.is_running
+          then:
+            - voice_assistant.start_continuous
+    on_turn_off:
+      - voice_assistant.stop
+      - lambda: id(assist).set_use_wake_word(false);
+  - platform: template
+    name: Use Listen Light
+    id: use_listen_light
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+    on_turn_on:
+      - script.execute: reset_led
+    on_turn_off:
+      - script.execute: reset_led
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: led
+    name: "voice led"
+    disabled_by_default: true
+    entity_category: config
+    pin: GPIO33
+    default_transition_length: 0s
+    chipset: ws2812
+    num_leds: 1
+    rgb_order: grb
+    rmt_channel: 0
+    effects:
+      - pulse:
+          transition_length: 250ms
+          update_interval: 250ms
+script:
+  - id: reset_led
+    then:
+      - if:
+          condition:
+            - switch.is_on: use_wake_word
+            - switch.is_on: use_listen_light
+          then:
+            - light.turn_on:
+                id: led
+                blue: 100%
+                red: 100%
+                green: 0%
+                brightness: 25%
+                effect: none
+          else:
+            - light.turn_off: led

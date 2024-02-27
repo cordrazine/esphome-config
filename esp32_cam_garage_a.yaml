@@ -8,7 +8,7 @@
 ### Declarations ####
 substitutions:
 # Identity
-  devicename: garage_a_cam
+  devicename: garageacam
   upper_devicename: Garage A Cam
 
 # Device
@@ -39,12 +39,12 @@ wifi:
   # needed for hidden SSID
   fast_connect: true
   
-  ap:
-    # Enable fallback hotspot (captive portal) in case wifi connection fails
-    ssid: ${upper_devicename} AP
-    password: !secret wifi_hotspot_psw
+  # ap:
+  #   # Enable fallback hotspot (captive portal) in case wifi connection fails
+  #   ssid: ${upper_devicename} AP
+  #   password: !secret wifi_hotspot_psw
 
-captive_portal:
+# captive_portal:
 
 # Enable Home Assistant API
 api:
@@ -114,11 +114,11 @@ light:
 # bluetooth_proxy:
 #   active: true
 
-esp32_camera_web_server:
-  - port: 8080
-    mode: stream
-  - port: 8081
-    mode: snapshot
+# esp32_camera_web_server:
+#   - port: 8080
+#     mode: stream
+#   - port: 8081
+#     mode: snapshot
 
 # # --------------------------------------------------------------------
 # # Garage A esp32-cam 

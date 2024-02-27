@@ -6,7 +6,7 @@
 ### Declarations ####
 substitutions:
 # Identity
-  devicename: sina_bed
+  devicename: sinabed
   upper_devicename: Sina Bed
 
 # Device
@@ -66,7 +66,21 @@ binary_sensor:
         pullup: true
     name: "${upper_devicename} Below Motion"
     device_class: motion
+  - platform: template
+    name: "${upper_devicename} Right Occupied"
+    id: ${devicename}_right_occupied
+    device_class: occupancy
 
+  - platform: template
+    name: "${upper_devicename} Left Occupied"
+    id: ${devicename}_left_occupied
+    device_class: occupancy
+
+  - platform: template
+    name: "${upper_devicename} Both Occupied"
+    id: ${devicename}_both_occupied
+    device_class: occupancy
+    
 # for the I2C bus
 i2c:
   - id: bus_a
@@ -78,19 +92,99 @@ text_sensor:
   - <<: !include common/versionTextSensor.yaml
   - <<: !include common/wifiInfoTextSensor.yaml
 
-switch:
+button:
   - <<: !include common/restartSwitch.yaml
   # - <<: !include common/shutdownSwitch.yaml
 
 sensor:
-  - platform: aht10
+  - platform: bme280
     temperature:
       name: "${upper_devicename} Temperature"
-      id: ${devicename}_temperature3
+      id: ${devicename}_temperature
+      oversampling: 16x
     humidity:
       name: "${upper_devicename} Humidity"
-      id: ${devicename}_humidity3
+      id: ${devicename}_humidity
+    address: 0x76
     update_interval: 10s
+
+  # Bed Sensor B (Right)
+  - platform: adc
+    pin: GPIO35
+    name: "${upper_devicename} Right"
+    update_interval: 0.5s
+    attenuation: 11db
+    filters:
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 1
+      - or:
+        - throttle: 180s
+        - delta: 0.02
+    on_value_range:
+      - above: 1.50
+        then:
+          - logger.log: ${upper_devicename} right occupancy detected
+          - binary_sensor.template.publish:
+              id: ${devicename}_right_occupied
+              state: ON
+          - if:
+              condition:
+                binary_sensor.is_on: ${devicename}_left_occupied
+              then:
+                - logger.log: ${upper_devicename} Both occupancy detected
+                - binary_sensor.template.publish:
+                    id: ${devicename}_both_occupied
+                    state: ON
+      - below: 1.49
+        then:
+          - logger.log: ${upper_devicename} right occupancy released
+          - binary_sensor.template.publish:
+              id: ${devicename}_right_occupied
+              state: OFF
+          - binary_sensor.template.publish:
+              id: ${devicename}_both_occupied
+              state: OFF
+
+
+  # Bed Sensor A Left Side (Sina)
+  - platform: adc 
+    pin: GPIO34
+    name: "${upper_devicename} Left"
+    update_interval: 0.5s
+    attenuation: 11db
+    filters:
+      - sliding_window_moving_average:
+          window_size: 10
+          send_every: 1
+      - or:
+        - throttle: 180s
+        - delta: 0.02
+        
+    on_value_range:
+      - above: 1.50
+        then:
+          - logger.log: ${upper_devicename} left occupancy detected
+          - binary_sensor.template.publish:
+              id: ${devicename}_left_occupied
+              state: ON
+          - if:
+              condition:
+                binary_sensor.is_on: ${devicename}_right_occupied
+              then:
+                - logger.log: ${upper_devicename} Both occupancy detected
+                - binary_sensor.template.publish:
+                    id: ${devicename}_both_occupied
+                    state: ON
+      - below: 1.49
+        then:
+          - logger.log: ${upper_devicename} left occupancy released
+          - binary_sensor.template.publish:
+              id: ${devicename}_left_occupied
+              state: OFF
+          - binary_sensor.template.publish:
+              id: ${devicename}_both_occupied
+              state: OFF
 
 esp32_ble_tracker:
 
