@@ -83,7 +83,8 @@ logger:
   level: $logger_level
 
 ota:
-  password: !secret ota_psw
+  - platform: esphome
+    password: !secret ota_psw
 
 bme680_bsec:
     # i2c address
@@ -354,6 +355,10 @@ switch:
 
 
 esp32_ble_tracker:
+  scan_parameters:
+    active: True # Whether to send scan-request packets to devices to gather more info (like devicename)
+    interval: 211ms # suggested 211ms # default 320ms
+    window:   120ms # suggested 120ms # default 30ms
 
 bluetooth_proxy:
   active: true

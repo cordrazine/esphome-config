@@ -1,0 +1,231 @@
+# VOice Satellite 1
+# filename: esp32_voice_satellite_office.yaml
+# Functionality:
+#   Voice Satelite
+#  Source: https://github.com/BigBobbas/esphome_firmware/tree/main/ESPHome%20Diy%20Voice%20Builds
+#
+### Declarations ####
+substitutions:
+# Identity
+  devicename: office-voice
+  upper_devicename: Office Voice
+
+# Network
+  static_ip: 192.168.20.121
+  gateway: 192.168.20.1
+  subnet: 255.255.255.0
+
+# General
+  logger_level: DEBUG
+
+  micro_wake_word_model: okay_nabu # github://esphome/micro-wake-word-models/models/okay_nabu.json 
+ # okay_nabu # 
+  # okay_nabu
+  
+### General configuration ####
+esphome:
+  name: ${devicename}
+  platformio_options:
+    board_build.flash_mode: dio
+
+psram:
+  mode:  octal
+  speed: 80MHz
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  variant: esp32s3
+  framework:
+    type: esp-idf
+    version: recommended
+    sdkconfig_options:
+      CONFIG_ESP32_S3_BOX_BOARD: "y"
+
+wifi:
+  ssid: !secret wifi_not_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: $static_ip
+    gateway: $gateway
+    subnet: $subnet
+  # needed for hidden SSID
+  fast_connect: true
+  
+  ap:
+    # Enable fallback hotspot (captive portal) in case wifi connection fails
+    ssid: ${upper_devicename} AP
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+# Enable Home Assistant API
+api:
+  on_client_connected:
+        then:
+          - delay: 50ms
+          - light.turn_off: led_ww
+          - micro_wake_word.start:
+  on_client_disconnected:
+        then:
+          - voice_assistant.stop: 
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/gnumpi/esphome_audio
+      ref: main
+    components: [ adf_pipeline, i2s_audio ]
+    refresh: 0s
+
+# Enable logging
+logger:
+  level: $logger_level
+
+ota:
+  - platform: esphome
+    password: !secret ota_psw
+
+# ***** actual implementation *****
+button:
+  - platform: restart
+    id: reboot
+    name: ${devicename} Reboot
+
+switch:
+  - platform: template
+    id: mute
+    name: ${devicename} Mute
+    optimistic: true
+    on_turn_on: 
+      - micro_wake_word.stop:
+      - voice_assistant.stop:
+      - light.turn_on:
+          id: led_ww           
+          red: 100%
+          green: 0%
+          blue: 0%
+          brightness: 60%
+          effect: fast pulse 
+      - delay: 2s
+      - light.turn_off:
+          id: led_ww
+      - light.turn_on:
+          id: led_ww           
+          red: 100%
+          green: 0%
+          blue: 0%
+          brightness: 30%
+    on_turn_off:
+      - micro_wake_word.start:
+      - light.turn_on:
+          id: led_ww           
+          red: 0%
+          green: 100%
+          blue: 0%
+          brightness: 60%
+          effect: fast pulse 
+      - delay: 2s
+      - light.turn_off:
+          id: led_ww 
+
+light:
+  - platform: esp32_rmt_led_strip
+    id: led_ww
+    rgb_order: GRB
+    pin: GPIO48
+    num_leds: 1
+    rmt_channel: 0
+    chipset: ws2812
+    name: ${devicename} Voice light
+    effects:
+      - pulse:
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0%
+          max_brightness: 100%
+
+i2s_audio:
+  - id: i2s_in
+    i2s_lrclk_pin: GPIO5  # SWS
+    i2s_bclk_pin: GPIO6 # SCK
+  - id: i2s_out
+    i2s_lrclk_pin: GPIO46 # bclk
+    i2s_bclk_pin: GPIO9 # lrclk
+
+adf_pipeline:
+  - platform: i2s_audio
+    type: audio_out
+    id: adf_i2s_out
+    i2s_audio_id: i2s_out
+    i2s_dout_pin: GPIO10
+
+  - platform: i2s_audio
+    type: audio_in
+    id: adf_i2s_in
+    i2s_audio_id: i2s_in
+    i2s_din_pin: GPIO4
+    channel: left
+    sample_rate: 16000
+    bits_per_sample: 16bit
+    pdm: false
+
+
+microphone:
+  - platform: adf_pipeline
+    id: adf_microphone
+    pipeline:
+      - adf_i2s_in
+      - self
+
+#speaker:
+#  - platform: adf_pipeline
+#    id: adf_speaker
+#    pipeline:
+#      - self
+#      - adf_i2s_out
+
+
+media_player:
+  - platform: adf_pipeline
+    id: adf_media_player
+    name: idf_player
+    internal: false
+    pipeline:
+      - self
+      - adf_i2s_out
+      
+micro_wake_word:
+  sliding_window_average_size: 5
+  on_wake_word_detected:
+    - voice_assistant.start:
+    - light.turn_on:
+        id: led_ww           
+        red: 30%
+        green: 30%
+        blue: 70%
+        brightness: 60%
+        effect: fast pulse 
+
+  model: okay_nabu
+
+voice_assistant:
+  id: va
+  microphone: adf_microphone
+  media_player: adf_media_player
+  noise_suppression_level: 2
+  auto_gain: 16dBFS
+  volume_multiplier: 6
+  use_wake_word: false
+  on_stt_end:
+    - light.turn_off: led_ww
+  on_error:
+    - micro_wake_word.start:  
+  on_end:
+    - light.turn_off: led_ww
+    - wait_until:
+        not:
+          voice_assistant.is_running:
+    - micro_wake_word.start:        

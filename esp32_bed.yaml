@@ -47,13 +47,14 @@ wifi:
     ssid: ${upper_devicename} AP
     password: !secret wifi_hotspot_psw
 
-captive_portal:
+# captive_portal:
 
 # Enable Home Assistant API
 api:
 
 ota:
-  password: !secret ota_psw
+  - platform: esphome
+    password: !secret ota_psw
 
 # for the BME280
 i2c:
@@ -63,12 +64,16 @@ i2c:
     scan: True
 
 esp32_ble_tracker:
-
+  scan_parameters:
+    active: True # Whether to send scan-request packets to devices to gather more info (like devicename)
+    interval: 211ms # suggested 211ms # default 320ms
+    window:   120ms # suggested 120ms # default 30ms
+    
 bluetooth_proxy:
   active: true
 
 sensor:
-  - platform: bme280
+  - platform: bme280_i2c
     temperature:
       name: "${upper_devicename} Temperature"
       id: ${devicename}_temperature

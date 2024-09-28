@@ -1,5 +1,5 @@
 # VOice Satellite 1
-# filename: esp32_voice_satellite_1.yaml
+# filename: esp32_voice_satellite_office.yaml
 # Functionality:
 #   Voice Satelite
 #  Source: https://gist.github.com/EverythingSmartHome/055fbdde31a607ef9d695d5cac780e94
@@ -18,13 +18,15 @@ substitutions:
 # General
   logger_level: DEBUG
 
-# micro_wake_word_model: github://esphome/micro-wake-word-models/models/okay_nabu.json 
+  micro_wake_word_model: okay_nabu # github://esphome/micro-wake-word-models/models/okay_nabu.json 
  # okay_nabu # 
   # okay_nabu
   
 ### General configuration ####
 esphome:
   name: ${devicename}
+  platformio_options:
+    board_build.flash_mode: dio
   on_boot:
       - priority: -100
         then:
@@ -35,12 +37,19 @@ esphome:
                 switch.is_on: use_wake_word
               then:
                 - voice_assistant.start_continuous:
+psram:
+  mode:  octal
+  speed: 80MHz
+
 esp32:
-  board: nodemcu-32s
-  # flash_size: 16MB
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  variant: esp32s3
   framework:
     type: esp-idf
     version: recommended
+    sdkconfig_options:
+      CONFIG_ESP32_S3_BOX_BOARD: "y"
 
 wifi:
   ssid: !secret wifi_not_ssid
@@ -70,23 +79,26 @@ ota:
   - platform: esphome
     password: !secret ota_psw
 
+text_sensor:
+  - platform: version
+    name: ${upper_devicename} Version
+    hide_timestamp: true
+
 # ***** actual implementation *****
 i2s_audio:
   - id: i2s_in
-    i2s_lrclk_pin: GPIO26   # SWS
-    i2s_bclk_pin: GPIO27    # SCK
+    i2s_lrclk_pin: GPIO1 # GPIO26   # SWS
+    i2s_bclk_pin: GPIO2 #GPIO27    # SCK
   - id: i2s_out
-    i2s_bclk_pin: GPIO18    # bclk
-    i2s_lrclk_pin: GPIO19   # lrclk
-
-
+    i2s_bclk_pin: GPIO42 # GPIO18    # bclk
+    i2s_lrclk_pin: GPIO41 # GPIO19   # lrclk
 
 microphone:
   - platform: i2s_audio
     id: mic
     adc_type: external
     i2s_audio_id: i2s_in
-    i2s_din_pin: GPIO13
+    i2s_din_pin: GPIO39 # GPIO13
     pdm: false
 
 speaker:
@@ -94,11 +106,12 @@ speaker:
     id: big_speaker
     i2s_audio_id: i2s_out
     dac_type: external
-    i2s_dout_pin: GPIO25
+    i2s_dout_pin: GPIO21 # GPIO25
     mode: mono
+    name: ${upper_devicename} Speaker
 
 micro_wake_word:
-  model: okay_nabu  # ${micro_wake_word_model}
+  model: ${micro_wake_word_model}
   on_wake_word_detected:
     - voice_assistant.start
 
@@ -183,7 +196,7 @@ light:
     name: "voice led"
     disabled_by_default: true
     entity_category: config
-    pin: GPIO33
+    pin: GPIO47 # GPIO33
     default_transition_length: 0s
     chipset: ws2812
     num_leds: 1

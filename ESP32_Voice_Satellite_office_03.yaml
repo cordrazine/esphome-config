@@ -1,0 +1,264 @@
+# VOice Satellite 1
+# filename: esp32_voice_satellite_office.yaml
+# Functionality:
+#   Voice Satelite
+#  Source: https://smarthomecircle.com/How-to-setup-on-device-wake-word-for-voice-assistant-home-assistant
+#
+### Declarations ####
+substitutions:
+# Identity
+  devicename: office-voice
+  upper_devicename: Office Voice
+
+# Network
+  static_ip: 192.168.20.121
+  gateway: 192.168.20.1
+  subnet: 255.255.255.0
+
+# General
+  logger_level: DEBUG
+
+  micro_wake_word_model: okay_nabu # okay_nabu # github://esphome/micro-wake-word-models/models/okay_nabu.json 
+ # okay_nabu # 
+  # okay_nabu
+  
+### General configuration ####
+esphome:
+  name: ${devicename}
+  platformio_options:
+    board_build.flash_mode: dio
+  on_boot:
+    - light.turn_on:
+        id: led_ww
+        blue: 100%
+        brightness: 60%
+        effect: fast pulse
+
+psram:
+  mode:  octal  # quad for N8R2 and octal for N16R8
+  speed: 80MHz
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      CONFIG_AUDIO_BOARD_CUSTOM: "y"
+
+wifi:
+  ssid: !secret wifi_not_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: $static_ip
+    gateway: $gateway
+    subnet: $subnet
+  # needed for hidden SSID
+  fast_connect: true
+  
+  ap:
+    # Enable fallback hotspot (captive portal) in case wifi connection fails
+    ssid: ${upper_devicename} AP
+    password: !secret wifi_hotspot_psw
+
+captive_portal:
+
+# Enable Home Assistant API
+api:
+  on_client_connected:
+        then:
+          - delay: 50ms
+          - light.turn_off: 
+              id: led_ww
+          - light.turn_on:
+              id: led_ww           
+              red: 100%
+              green: 0%
+              blue: 100%
+              brightness: 20%
+          - micro_wake_word.start:
+  on_client_disconnected:
+        then:
+          - voice_assistant.stop: 
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/gnumpi/esphome_audio
+      ref: main
+    components: [ adf_pipeline, i2s_audio ]
+    refresh: 0s
+
+# Enable logging
+logger:
+  level: $logger_level
+  hardware_uart: UART0
+
+ota:
+  - platform: esphome
+    password: !secret ota_psw
+
+text_sensor:
+  - <<: !include common/versionTextSensor.yaml
+
+# ***** actual implementation *****
+binary_sensor:
+  - platform: template  
+    name: ${devicename} Assist in progress
+    id: bin_sensor_assist_in_progress
+
+button:
+  - platform: restart
+    name: ${devicename} Restart
+    id: but_rest
+
+switch:
+  - platform: template
+    id: mute
+    name: ${devicename} Mute
+    optimistic: true
+    on_turn_on: 
+      - micro_wake_word.stop:
+      - voice_assistant.stop:
+      - light.turn_on:
+          id: led_ww           
+          red: 100%
+          green: 0%
+          blue: 0%
+          brightness: 60%
+          effect: fast pulse 
+      - delay: 2s
+      - light.turn_off:
+          id: led_ww
+      - light.turn_on:
+          id: led_ww           
+          red: 100%
+          green: 0%
+          blue: 0%
+          brightness: 30%
+    on_turn_off:
+      - micro_wake_word.start:
+      - light.turn_on:
+          id: led_ww           
+          red: 0%
+          green: 100%
+          blue: 0%
+          brightness: 60%
+          effect: fast pulse 
+      - delay: 2s
+      - light.turn_on:
+          id: led_ww           
+          red: 0%
+          green: 0%
+          blue: 100%
+          brightness: 20%
+   
+light:
+  - platform: esp32_rmt_led_strip
+    id: led_ww
+    rgb_order: GRB
+    pin: GPIO48
+    num_leds: 1
+    rmt_channel: 0
+    chipset: ws2812
+    name: ${devicename} Voice Light
+    effects:
+      - pulse:
+      - pulse:
+          name: "Fast Pulse"
+          transition_length: 0.5s
+          update_interval: 0.5s
+          min_brightness: 0%
+          max_brightness: 100%
+          
+          
+ # Audio and Voice Assistant Config          
+i2s_audio:
+  - id: i2s_in
+    i2s_lrclk_pin: GPIO3  #WS 
+    i2s_bclk_pin: GPIO2 #SCK
+  - id: i2s_speaker
+    i2s_lrclk_pin: GPIO6  #LRC 
+    i2s_bclk_pin: GPIO7 #BLCK
+
+microphone:
+  - platform: i2s_audio
+    id: va_mic
+    adc_type: external
+    i2s_din_pin: GPIO4 #SD pin on the INMP441
+    channel: left
+    pdm: false
+    i2s_audio_id: i2s_in
+    bits_per_sample: 32 bit
+    
+speaker:
+    platform: i2s_audio
+    id: va_speaker
+    i2s_audio_id: i2s_speaker
+    dac_type: external
+    i2s_dout_pin: GPIO8   #  DIN Pin of the MAX98357A Audio Amplifier
+    mode: mono
+
+micro_wake_word:
+  on_wake_word_detected:
+    # then:
+    - voice_assistant.start:
+        wake_word: !lambda return wake_word;
+    - light.turn_on:
+        id: led_ww           
+        red: 30%
+        green: 30%
+        blue: 70%
+        brightness: 60%
+        effect: fast pulse 
+  models: okay_nabu
+    
+voice_assistant:
+  id: va
+  microphone: va_mic
+  noise_suppression_level: 2.0
+  volume_multiplier: 4.0
+  speaker: va_speaker
+  on_listening:
+    then:
+      - binary_sensor.template.publish:
+          id: bin_sensor_assist_in_progress
+          state: ON
+  on_stt_end:
+    then:
+      - light.turn_off: led_ww
+      - binary_sensor.template.publish:
+          id: bin_sensor_assist_in_progress
+          state: OFF
+  on_error:
+    then:
+      - micro_wake_word.start:  
+  on_end:
+    then:
+      - binary_sensor.template.publish:
+          id: bin_sensor_assist_in_progress
+          state: OFF
+      - light.turn_off: 
+          id: led_ww
+      - light.turn_on:
+          id: led_ww           
+          red: 100%
+          green: 0%
+          blue: 100%
+          brightness: 20%
+      - wait_until:
+          not:
+            voice_assistant.is_running:
+      - micro_wake_word.start:  
+
+# esp32_ble_tracker:
+#   scan_parameters:
+#     active: True # Whether to send scan-request packets to devices to gather more info (like devicename)
+#     interval: 211ms # suggested 211ms # default 320ms
+#     window:   120ms # suggested 120ms # default 30ms
+    
+# bluetooth_proxy:
+#   active: true

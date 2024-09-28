@@ -1,12 +1,12 @@
-# Kitchen Multi Sensor
-# filename: ESP32_kitchen.yaml
+# Living Multi Sensor
+# filename: ESP32_Garten_Sofa.yaml
 #
 # 
 ### Declarations ####
 substitutions:
 # Identity
-  devicename: kitchen
-  upper_devicename: Kitchen
+  devicename: garten_sofa
+  upper_devicename: Garten Sofa
 
 # Device
   platform: ESP32
@@ -14,7 +14,7 @@ substitutions:
   #  board_flash_mode: dout
 
 # Network
-  static_ip: 192.168.20.119
+  static_ip: 192.168.20.123
   gateway: 192.168.20.1
   subnet: 255.255.255.0
 
@@ -42,7 +42,7 @@ wifi:
     ssid: ${upper_devicename} AP
     password: !secret wifi_hotspot_psw
 
-# captive_portal:
+captive_portal:
 
 # Enable Home Assistant API
 api:
@@ -57,12 +57,6 @@ ota:
 
 binary_sensor:
   - <<: !include common/connectStatusSensor.yaml
-  - platform: gpio
-    pin:
-      number: GPIO15
-      mode: INPUT_PULLUP
-    name: "${devicename} Motion"
-    device_class: motion
 
 text_sensor:
   - <<: !include common/versionTextSensor.yaml

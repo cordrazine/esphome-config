@@ -26,7 +26,10 @@ esphome:
   name: ${devicename}
   platform: $platform
   board: $board
-    
+  project:
+    name: "belcolodge.${devicename}"
+    version: "1.0.0"
+
 wifi:
   ssid: !secret wifi_not_ssid
   password: !secret wifi_not_psw
@@ -52,12 +55,24 @@ logger:
   level: $logger_level
 
 ota:
-  password: !secret ota_psw
+  - platform: esphome
+    password: !secret ota_psw
+
+ld2410:
+
+button:
+  - platform: ld2410
+    factory_reset:
+      name: "${upper_devicename} factory reset"
+    restart:
+      name: "${upper_devicename} restart"
+    query_params:
+      name: "${upper_devicename} query params"
 
 binary_sensor:
   - <<: !include common/connectStatusSensor.yaml
   - platform: gpio
-    pin: GPIO2
+    pin: GPIO13
     name: "Service Motion"
     device_class: motion
 
@@ -69,12 +84,155 @@ switch:
   - <<: !include common/restartSwitch.yaml
   # - <<: !include common/shutdownSwitch.yaml
 
+# for the BME280
+i2c:
+  - id: bus_a
+    sda: GPIO21
+    scl: GPIO22
+    scan: True
+
+# for the LD2410 mmWaveSensor
+uart:
+  #id: uart1
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+  baud_rate: 256000
+  parity: NONE
+  stop_bits: 1
+
 sensor:
-  - platform: dht
-    pin: GPIO4
-    model: DHT22
+  - platform: bme280_i2c
     temperature:
-      name: "${devicename} Temperature"
+      name: "${upper_devicename} Temperature"
+      id: ${devicename}_temperature
+      oversampling: 16x
+    pressure:
+      name: "${upper_devicename} Pressure"
+      id: ${devicename}_pressure
     humidity:
-      name: "${devicename} Humidity"
-    update_interval: 5s
+      name: "${upper_devicename} Humidity"
+      id: ${devicename}_humidity
+    address: 0x76
+    update_interval: 15s
+  - platform: ld2410
+    light:
+      name: "${upper_devicename} light"
+    moving_distance:
+      name: "${upper_devicename} moving Distance"
+    still_distance:
+      name: "${upper_devicename} still Distance"
+    moving_energy:
+      name: "${upper_devicename} move Energy"
+    still_energy:
+      name: "${upper_devicename} still Energy"
+    detection_distance:
+      name: "${upper_devicename} detection Distance"
+    g0:
+      move_energy:
+        name: "${upper_devicename} g0 move energy"
+      still_energy:
+        name: "${upper_devicename} g0 still energy"
+    g1:
+      move_energy:
+        name: "${upper_devicename} g1 move energy"
+      still_energy:
+        name: "${upper_devicename} g1 still energy"
+    g2:
+      move_energy:
+        name: "${upper_devicename} g2 move energy"
+      still_energy:
+        name: "${upper_devicename} g2 still energy"
+    g3:
+      move_energy:
+        name: "${upper_devicename} g3 move energy"
+      still_energy:
+        name: "${upper_devicename} g3 still energy"
+    g4:
+      move_energy:
+        name: "${upper_devicename} g4 move energy"
+      still_energy:
+        name: "${upper_devicename} g4 still energy"
+    g5:
+      move_energy:
+        name: "${upper_devicename} g5 move energy"
+      still_energy:
+        name: "${upper_devicename} g5 still energy"
+    g6:
+      move_energy:
+        name: "${upper_devicename} g6 move energy"
+      still_energy:
+        name: "${upper_devicename} g6 still energy"
+    g7:
+      move_energy:
+        name: "${upper_devicename} g7 move energy"
+      still_energy:
+        name: "${upper_devicename} g7 still energy"
+    g8:
+      move_energy:
+        name: "${upper_devicename} g8 move energy"
+      still_energy:
+        name: "${upper_devicename} g8 still energy"
+
+number:
+  - platform: ld2410
+    timeout:
+      name: "${upper_devicename} Timeout"
+    light_threshold:
+      name: "${upper_devicename} Light threshold"
+    max_move_distance_gate:
+      name: "${upper_devicename} Max move distance gate"
+    max_still_distance_gate:
+      name: "${upper_devicename} max still distance gate"
+    g0:
+      move_threshold:
+        name: "${upper_devicename} g0 move threshold"
+      still_threshold:
+        name: "${upper_devicename} g0 still threshold"
+    g1:
+      move_threshold:
+        name: "${upper_devicename} g1 move threshold"
+      still_threshold:
+        name: "${upper_devicename} g1 still threshold"
+    g2:
+      move_threshold:
+        name: "${upper_devicename} g2 move threshold"
+      still_threshold:
+        name: "${upper_devicename} g2 still threshold"
+    g3:
+      move_threshold:
+        name: "${upper_devicename} g3 move threshold"
+      still_threshold:
+        name: "${upper_devicename} g3 still threshold"
+    g4:
+      move_threshold:
+        name: "${upper_devicename} g4 move threshold"
+      still_threshold:
+        name: "${upper_devicename} g4 still threshold"
+    g5:
+      move_threshold:
+        name: "${upper_devicename} g5 move threshold"
+      still_threshold:
+        name: "${upper_devicename} g5 still threshold"
+    g6:
+      move_threshold:
+        name: "${upper_devicename} g6 move threshold"
+      still_threshold:
+        name: "${upper_devicename} g6 still threshold"
+    g7:
+      move_threshold:
+        name: "${upper_devicename} g7 move threshold"
+      still_threshold:
+        name: "${upper_devicename} g7 still threshold"
+    g8:
+      move_threshold:
+        name: "${upper_devicename} g8 move threshold"
+      still_threshold:
+        name: "${upper_devicename} g8 still threshold"
+esp32_ble_tracker:
+  scan_parameters:
+    active: True # Whether to send scan-request packets to devices to gather more info (like devicename)
+    interval: 211ms # suggested 211ms # default 320ms
+    window:   120ms # suggested 120ms # default 30ms
+
+bluetooth_proxy:
+  active: true

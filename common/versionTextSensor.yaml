@@ -1,4 +1,4 @@
-# ESPhome version sensor
+# ESPhome version sensor as text_sensor
 - platform: version
-  name: ${upper_devicename} Version
+  name: ${upper_devicename} Firmware
   hide_timestamp: true
