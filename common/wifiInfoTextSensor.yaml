@@ -3,5 +3,7 @@
 - platform: wifi_info
   ip_address:
     name: ${upper_devicename} IP
+    id: device_ip_address
   ssid:
     name: ${upper_devicename} SSID
+    id: device_ssid

@@ -1,3 +1,4 @@
   # Uptime sensor
   - platform: uptime
     name: ${upper_devicename} Uptime
+    id: device_uptime

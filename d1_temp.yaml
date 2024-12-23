@@ -1,0 +1,61 @@
+# 8266 Temperature K type thermocouple test 
+# filename: d1_temp.yaml
+# Functionality
+#  MAX6675 K-type thermocouple
+
+esphome:
+  name: d1_temp
+  platform: ESP8266
+  board: d1_mini
+  board_flash_mode: dout
+
+# Wifi settings
+wifi:
+  ssid: !secret wifi_not_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: 192.168.20.109
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+  
+  # needed for hidden SSID
+  fast_connect: true
+
+
+# API for connecting to Home-Assistant
+api:
+
+# Debug logger
+logger:
+
+# Over the air update
+ota:
+  - platform: esphome
+    password: !secret ota_psw
+
+# Status LED on the Wemos D1 Mini3
+
+status_led:
+  pin:
+    number: D4
+    inverted: true
+
+
+switch:
+  # Restart switch
+  - platform: restart
+    name: "d1 temp Restart"
+
+spi:
+  miso_pin: D0
+  clk_pin: D1
+
+sensor:
+  # Uptime sensor
+  - platform: uptime
+    name: "d1 temp Uptime"
+
+  - platform: max6675
+    name: "D1 Temp Temperature"
+    cs_pin: D2
+    update_interval: 5s

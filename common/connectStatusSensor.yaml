@@ -1,4 +1,4 @@
 # Connection status Sensor MQTT / Native HA API 
 - platform: status
   name: ${upper_devicename} Status
-  id: sensorstatusid
+  id: device_statusid

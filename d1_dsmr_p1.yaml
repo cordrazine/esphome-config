@@ -1,0 +1,109 @@
+substitutions:
+# Identity
+  devicename: esp-p1meter
+  upper_devicename: esp-p1meter
+  
+esphome:
+  name: ${devicename}
+  platform: ESP8266
+  board: nodemcu
+
+# Wifi settings
+wifi:
+  ssid: !secret wifi_not_ssid
+  password: !secret wifi_not_psw
+  manual_ip:
+    static_ip: 192.168.20.109
+    gateway: 192.168.20.1
+    subnet: 255.255.255.0
+  
+  # needed for hidden SSID
+  fast_connect: true
+
+# Enable logging
+logger:
+  level: DEBUG  # Logging costs performnce, swithc to DEBUG when needed
+  baud_rate: 0 # disable logging over uart (would use up a HW uart)
+  esp8266_store_log_strings_in_flash: false # Avoid flash wear and tear
+  
+# Enable Home Assistant API
+api:
+
+# Over the air update
+ota:
+  - platform: esphome
+    password: !secret ota_psw
+
+uart:
+  id: p1_uart
+  #tx_pin: tx
+  rx_pin: 
+    number: GPIO3
+  baud_rate: 115200
+  rx_buffer_size: 1700    # Buffer size controls polling frequency
+
+# link input uart to dsmr
+dsmr:
+  uart_id: p1_uart
+  max_telegram_length: 1700
+
+switch:
+  - <<: !include common/restartSwitch.yaml
+
+sensor:
+  # Uptime sensor
+  - platform: uptime
+    name: "${upper_devicename} Uptime"
+  - platform: dsmr
+    energy_delivered_tariff1:
+      name: ${upper_devicename} Energy Consumed Tariff 1
+      state_class: total_increasing
+    energy_delivered_tariff2:
+      name: ${upper_devicename} Energy Consumed Tariff 2
+      state_class: total_increasing
+    energy_returned_tariff1:
+      name: ${upper_devicename} Energy Produced Tariff 1
+    energy_returned_tariff2:
+      name: ${upper_devicename} Energy Produced Tariff 2
+    power_delivered:
+      name: ${upper_devicename} Power Consumed
+    power_returned:
+      name: ${upper_devicename} Power Produced
+    electricity_failures:
+      name: ${upper_devicename} Electricity Failures
+    electricity_long_failures:
+      name: ${upper_devicename} Electricity Long Failures
+    voltage_l1:
+      name: ${upper_devicename} Voltage L1
+    voltage_l2:
+      name: ${upper_devicename} Voltage L2
+    voltage_l3:
+      name: ${upper_devicename} Voltage L3
+    current_l1:
+      name: ${upper_devicename} Current L1
+    current_l2:
+      name: ${upper_devicename} Current L2
+    current_l3:
+      name: ${upper_devicename} Current L3
+    power_delivered_l1:
+      name: ${upper_devicename} Power Consumed L1
+    power_delivered_l2:
+      name: ${upper_devicename} Power Consumed L2
+    power_delivered_l3:
+      name: ${upper_devicename} Power Consumed L3
+    power_returned_l1:
+      name: ${upper_devicename} Power Produced L1
+    power_returned_l2:
+      name: ${upper_devicename} Power Produced L2
+    power_returned_l3:
+      name: ${upper_devicename} Power Produced L3
+text_sensor:
+  - <<: !include common/versionTextSensor.yaml
+  - <<: !include common/wifiInfoTextSensor.yaml
+  - platform: dsmr
+    identification:
+      name: "${upper_devicename} DSMR Identification"
+    p1_version:
+      name: "${upper_devicename} DSMR Version" 
+
+
